@@ -134,9 +134,18 @@ def procer(in_frames=Queue(), out_frames=Queue()):
             print("[historybuffer size : %d ]" % len(historybuffer))
             # pprint.pprint(frame)
         historybuffer = historybuffer[:MAXHISTORYBUFFERSIZE]
+
+        ########### write your code below############
+        ###input : frame and historybuffer
         #强化学习
         print("[one time study!!!!!]")
-        control_frame = RL(frame, historybuffer)
+        control_frame = RL(frame, historybuffer) 
+
+
+
+        #### output: control_frame
+        #### format : [%f, %f, %f, %f, %f\n]
+        #############################################
 
         #发送控制帧
         out_frames.put(control_frame)
@@ -145,8 +154,8 @@ def procer(in_frames=Queue(), out_frames=Queue()):
 
 
 def RL(frame, historybuffer):
-    '''control_frame with var_separator , 
-    %f, %f, %f, %f, %f
+    '''[format as below inside [] ]control_frame with var_separator , 
+    [%f, %f, %f, %f, %f\n]
     aileron, elevator, rudder, throttle0, throttle1
     副翼, 电梯,方向舵, 油门0, 油门1
     '''
