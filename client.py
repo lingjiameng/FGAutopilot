@@ -2,15 +2,26 @@ import socket
 import numpy
 import threading
 import time
+import datetime
 import pprint
 import random
+import pandas as pd
 from queue import Queue
+
+logDIR = "data/flylog" #飞行日志存储文件目录
+RECEBUFFERSIZE = 100 #接收数据后存入文件的buffer大小
+MAXHISTORYBUFFERSIZE = 20 #处理数据线程buffer存储历史数据上限
 
 
 def parse_hms(s):
     hour_s, minute_s, second_s = s.split(':')
     return (int(hour_s), int(minute_s), int(second_s))
 
+def gettime():
+    now = datetime.datetime.now()
+    date = "%s-%s-%s_%s-%s-%s" % (
+        now.year, now.month, now.day, now.hour, now.minute, now.second)
+    return date
 
 def format_data(data_frame):
     data_list = data_frame.split(',')
@@ -18,12 +29,12 @@ def format_data(data_frame):
     for data in data_list:
         data = data.split('=')
         try:
-            data_dict[data[0]] = float(data[1])
+            data_dict[data[0]] = [float(data[1])]
         except ValueError:
             if len(data[1]) == 0:
-                data_dict[data[0]] = None
+                data_dict[data[0]] = [""]
             else:
-                data_dict[data[0]] = parse_hms(data[1])
+                data_dict[data[0]] = [parse_hms(data[1])]
     return data_dict
 
 
@@ -42,14 +53,27 @@ def save_model():
 def load_model():
     pass
 
-# def data2buffer(frames, buffer=[]):
+# def data2buffer(frames, historybuffer=[]):
 #     while True:
-#         buffer.insert(0, frames.get())
+#         historybuffer.insert(0, frames.get())
 
 
 def receiver(fg2client_addr, in_frames=Queue()):
     rece = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     rece.bind(fg2client_addr)
+
+    # rece first frame as header
+    data, addr = rece.recvfrom(1024)
+    data = data.decode('utf-8')
+    data_dict = format_data(data)
+
+    framebuffer = pd.DataFrame.from_dict(data_dict)
+    
+    logfile = logDIR + "/log"+gettime() + ".csv"
+    framebuffer.to_csv(logfile, mode='a', index=False, header=True)
+    buffercount = 0
+
+
     print('Bind UDP on %s:%s !' % fg2client_addr)
     while True:
         # 接收数据:
@@ -61,7 +85,15 @@ def receiver(fg2client_addr, in_frames=Queue()):
         data, addr = rece.recvfrom(1024)
         data = data.decode('utf-8')
         data_dict = format_data(data)
-        in_frames.put(data_dict)
+        in_frames.put(data_dict) 
+
+        framebuffer=framebuffer.append(pd.DataFrame.from_dict(data_dict),ignore_index=True,sort=False)
+        if(buffercount % 100 == 0):
+            print("save log to",logDIR)
+            # print(framebuffer)
+            framebuffer.to_csv(logfile,mode = 'a', index=False,header=False)
+            framebuffer = pd.DataFrame(data=None, columns=framebuffer.columns)
+        buffercount += 1
 
         print('Received from %s:%s.' % addr, end=":")
         # print("recive frame", data_dict["frame"])
@@ -90,21 +122,21 @@ def sender(client2fg_addr, out_frames=Queue()):
 
 
 def procer(in_frames=Queue(), out_frames=Queue()):
-    buffer = []
+    historybuffer = []
     frame = dict()
 
     while True:
         #接受数据
         while not in_frames.empty():
             frame = in_frames.get()
-            buffer.insert(0, frame)
+            historybuffer.insert(0, frame)
             # print(frame)
-            print("[buffer size : %d ]" % len(buffer))
+            print("[historybuffer size : %d ]" % len(historybuffer))
             # pprint.pprint(frame)
-
+        historybuffer = historybuffer[:MAXHISTORYBUFFERSIZE]
         #强化学习
         print("[one time study!!!!!]")
-        control_frame = RL(frame, buffer)
+        control_frame = RL(frame, historybuffer)
 
         #发送控制帧
         out_frames.put(control_frame)
@@ -112,7 +144,7 @@ def procer(in_frames=Queue(), out_frames=Queue()):
     pass
 
 
-def RL(frame, buffer):
+def RL(frame, historybuffer):
     '''control_frame with var_separator , 
     %f, %f, %f, %f, %f
     aileron, elevator, rudder, throttle0, throttle1
