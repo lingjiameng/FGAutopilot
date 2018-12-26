@@ -2,14 +2,19 @@ import socket
 import numpy
 import threading
 import time
+import datetime
 import pprint
 import random
 from queue import Queue
+import pandas as pd
+
+
+logDIR = "data/flylog"
 
 
 def parse_hms(s):
     hour_s, minute_s, second_s = s.split(':')
-    return (int(hour_s), int(minute_s), int(second_s))
+    return [hour_s, minute_s, second_s]
 
 
 def format_data(data_frame):
@@ -18,12 +23,12 @@ def format_data(data_frame):
     for data in data_list:
         data = data.split('=')
         try:
-            data_dict[data[0]] = float(data[1])
+            data_dict[data[0]] = [float(data[1])]
         except ValueError:
             if len(data[1]) == 0:
-                data_dict[data[0]] = None
+                data_dict[data[0]] = [""]
             else:
-                data_dict[data[0]] = parse_hms(data[1])
+                data_dict[data[0]] = ["-".join(parse_hms(data[1]))]
     return data_dict
 
 
@@ -50,7 +55,16 @@ def load_model():
 def receiver(fg2client_addr, in_frames=Queue()):
     rece = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     rece.bind(fg2client_addr)
+
+    framebuffer = pd.DataFrame.from_dict(format_data("clock-indicated=0:0:0,aileron=0.0000,elevator=0.0000,rudder=0.0000,flaps=0.0000,throttle0=0.0000,throttle1=0.0000,vsi-fpm=0.0000,alt-ft=0.0000,ai-pitch=0.0000,ai-roll=0.0000,ai-offset=0.0000,hi-heading=0.0000,roll-deg=0.0000,pitch-deg=0.0000,heading-deg=0.0000,airspeed-kt=0.0000,speed-north-fps=0.0000,speed-east-fps=0.0000,speed-down-fps=0.0000,uBody-fps=0.0000,vBody-fps=0.0000,wBody-fps=0.0000,north-accel-fps_sec=0.0000,east-accel-fps_sec=0.0000,down-accel-fps_sec=0.0000,x-accel-fps_sec=0.0000,y-accel-fps_sec=0.0000,z-accel-fps_sec=0.0000,latitude=0.0000,longitude=0.0000,altitude=0.0000"))
+    now = datetime.datetime.now()
+    logname = logDIR+"/log%s-%s-%s_%s-%s-%s.csv" % (
+        now.year, now.month, now.day, now.hour, now.minute, now.second)
+
     print('Bind UDP on %s:%s !' % fg2client_addr)
+
+    framebuffer.to_csv(logname, mode='a', index=False, header=True)
+    count = 0
     while True:
         # 接收数据:
         ########################
@@ -61,8 +75,15 @@ def receiver(fg2client_addr, in_frames=Queue()):
         data, addr = rece.recvfrom(1024)
         data = data.decode('utf-8')
         data_dict = format_data(data)
-        in_frames.put(data_dict)
+        framebuffer=framebuffer.append(pd.DataFrame.from_dict(data_dict),ignore_index=True,sort=False)
 
+        # in_frames.put(data_dict)
+        if(count % 100 == 0):
+            print("save log")
+            print(framebuffer)
+            framebuffer.to_csv(logname,mode = 'a', index=False,header=False)
+            framebuffer = pd.DataFrame(data=None, columns=framebuffer.columns)
+        count+=1
         print('Received from %s:%s.' % addr, end=":")
         # print("recive frame", data_dict["frame"])
         print("recive frame", data_dict["clock-indicated"])
@@ -139,21 +160,20 @@ def main():
 
     t_rece = threading.Thread(
         target=receiver, args=(fg2client_addr, my_in_frames))
-    t_sender = threading.Thread(
-        target=sender, args=(client2fg_addr, my_out_frames))
-    t_procer = threading.Thread(
-        target=procer, args=(my_in_frames, my_out_frames))
+    # t_sender = threading.Thread(
+    #     target=sender, args=(client2fg_addr, my_out_frames))
+    # t_procer = threading.Thread(
+    #     target=procer, args=(my_in_frames, my_out_frames))
 
     t_rece.daemon = True
-    t_procer.daemon = True
-    t_sender.daemon = True
+    # t_procer.daemon = True
+    # t_sender.daemon = True
 
     t_rece.start()
-    t_procer.start()
-    t_sender.start()
-
-    print("[client shutdown after 100 seconds!]")
-    time.sleep(90)
+    # t_procer.start()
+    # t_sender.start()
+    print("[client shutdown after 1000 seconds!]")
+    time.sleep(1000)
     print("[client shutdown after 10 seconds!]")
     time.sleep(10)
     print("[client shutdown!]")
