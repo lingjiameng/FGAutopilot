@@ -7,6 +7,7 @@ import pprint
 import random
 import pandas as pd
 from queue import Queue
+import autopilot
 
 logDIR = "data/flylog" #飞行日志存储文件目录
 RECEBUFFERSIZE = 100 #接收数据后存入文件的buffer大小
@@ -73,9 +74,13 @@ def receiver(fg2client_addr, in_frames=Queue()):
     framebuffer.to_csv(logfile, mode='a', index=False, header=True)
     buffercount = 0
 
-
+    # timebefore = time.clock()
     print('Bind UDP on %s:%s !' % fg2client_addr)
     while True:
+        # timenew =  time.clock()
+        # print(timenew - timebefore)
+        # timebefore = timenew
+        
         # 接收数据:
         ########################
         ## if out_frame not full, send one frame
@@ -97,7 +102,7 @@ def receiver(fg2client_addr, in_frames=Queue()):
 
         print('Received from %s:%s.' % addr, end=":")
         # print("recive frame", data_dict["frame"])
-        print("recive frame", data_dict["clock-indicated"])
+        print("recive frame", data_dict["hi-heading"])
 
 
 def sender(client2fg_addr, out_frames=Queue()):
@@ -122,25 +127,37 @@ def sender(client2fg_addr, out_frames=Queue()):
 
 
 def procer(in_frames=Queue(), out_frames=Queue()):
+    time.sleep(1) # 等待接收线程初始话完成
     historybuffer = []
     frame = dict()
 
+    # frame = in_frames.get()
+    # auto = autopilot.AutoPilot(frame["hi-heading"][0])
+
     while True:
         #接受数据
+        # timebefore = time.clock()
+        frame = in_frames.get()
+        historybuffer.insert(0, frame)
+        # 防止运算过快，而来不及得到状态信息就进行新的计算
         while not in_frames.empty():
             frame = in_frames.get()
             historybuffer.insert(0, frame)
             # print(frame)
             print("[historybuffer size : %d ]" % len(historybuffer))
             # pprint.pprint(frame)
-        historybuffer = historybuffer[:MAXHISTORYBUFFERSIZE]
+        # print(time.clock()-timebefore)
+        # delay about 0.005
 
+        historybuffer = historybuffer[:MAXHISTORYBUFFERSIZE]
         ########### write your code below############
         ###input : frame and historybuffer
         #强化学习
         print("[one time study!!!!!]")
+        # print(frame)
+        # print(historybuffer)
         control_frame = RL(frame, historybuffer) 
-
+        # control_frame = auto.takeoff(frame, historybuffer)
 
 
         #### output: control_frame
@@ -157,11 +174,11 @@ def RL(frame, historybuffer):
     '''[format as below inside [] ]control_frame with var_separator , 
     [%f, %f, %f, %f, %f\n]
     aileron, elevator, rudder, throttle0, throttle1
-    副翼, 电梯,方向舵, 油门0, 油门1
+    副翼, 升降舵,方向舵, 油门0, 油门1
     '''
 
-    control_frame = "0.0, 0.0, -2.00, 2.600000, 2.600000\n"
-    time.sleep(random.randint(1, 3))
+    control_frame = "0.0,0.0,0.0, 2.600000, 2.600000\n"
+    time.sleep(5)
     return control_frame
 
 
@@ -193,11 +210,12 @@ def main():
     t_procer.start()
     t_sender.start()
 
-    print("[client shutdown after 100 seconds!]")
-    time.sleep(90)
-    print("[client shutdown after 10 seconds!]")
-    time.sleep(10)
-    print("[client shutdown!]")
+    input()
+    # print("[client shutdown after 100 seconds!]")
+    # time.sleep(90)
+    # print("[client shutdown after 10 seconds!]")
+    # time.sleep(10)
+    # print("[client shutdown!]")
 
 
 if __name__ == "__main__":

@@ -11,3 +11,19 @@
 ## data
 
 - we will save all the fly log in folder `data/flylog`. their named by the time the log created.
+- input format
+    - input send from flight gear in every 0.1s
+
+## sys
+
+- `takeoff ` 起飞
+    - 起飞前
+    - **跑道上** 加速与维持方向稳定
+    - **离地后** 稳定爬升与维持机身姿态
+- `cruise ` 巡航
+
+## terms
+
+- 水平飞行（horizontal flight）
+- 定常飞行（steady flight）
+- 操作杆转弯
