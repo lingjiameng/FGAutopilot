@@ -38,22 +38,6 @@ def format_data(data_frame):
                 data_dict[data[0]] = [parse_hms(data[1])]
     return data_dict
 
-
-def write_data():
-    pass
-
-
-def load_data():
-    pass
-
-
-def save_model():
-    pass
-
-
-def load_model():
-    pass
-
 # def data2buffer(frames, historybuffer=[]):
 #     while True:
 #         historybuffer.insert(0, frames.get())
@@ -130,34 +114,36 @@ def procer(in_frames=Queue(), out_frames=Queue()):
     time.sleep(1) # 等待接收线程初始话完成
     historybuffer = []
     frame = dict()
-
-    # frame = in_frames.get()
-    # auto = autopilot.AutoPilot(frame["hi-heading"][0])
+    frame = in_frames.get()
+    
+    auto = autopilot.AutoPilot(frame)
 
     while True:
         #接受数据
-        # timebefore = time.clock()
+        
         frame = in_frames.get()
+        timebefore = time.clock()
         historybuffer.insert(0, frame)
-        # 防止运算过快，而来不及得到状态信息就进行新的计算
+        # 放止运算过快，而来不及得到状态信息就进行新的计算
         while not in_frames.empty():
             frame = in_frames.get()
             historybuffer.insert(0, frame)
             # print(frame)
             print("[historybuffer size : %d ]" % len(historybuffer))
             # pprint.pprint(frame)
-        # print(time.clock()-timebefore)
         # delay about 0.005
-
+        
         historybuffer = historybuffer[:MAXHISTORYBUFFERSIZE]
         ########### write your code below############
         ###input : frame and historybuffer
         #强化学习
-        print("[one time study!!!!!]")
+        print("[autopilot react once]")
+        print(time.clock()-timebefore)
+
         # print(frame)
         # print(historybuffer)
-        control_frame = RL(frame, historybuffer) 
-        # control_frame = auto.takeoff(frame, historybuffer)
+        # control_frame = RL(frame, historybuffer) 
+        control_frame = auto.pilot(frame, historybuffer)
 
 
         #### output: control_frame
@@ -177,8 +163,8 @@ def RL(frame, historybuffer):
     副翼, 升降舵,方向舵, 油门0, 油门1
     '''
 
-    control_frame = "0.0,0.0,0.0, 2.600000, 2.600000\n"
-    time.sleep(5)
+    control_frame = "0.0,,, 2.600000, 2.600000\n"
+    time.sleep(0.7)
     return control_frame
 
 

@@ -5,8 +5,13 @@
 ## code
 
 - `client.py` 主程序
-    - 默认100s后关闭，如需更改，只需更改文件尾`time.sleep(90)`为`time.sleep(999999999)`,增加主程序休眠时间
+    - 默认100s后关闭，如需更改，只需更改文件尾`time.sleep(90)`为`input()`,增加主程序休眠时间
+    - 程序输入回车结束运行
 - `server.py` 模仿flight gear 收发数据，用于代码调试
+- `autopilot.py` 所有自动驾驶的控制算法实现的地方
+- code structure
+
+![struct](struct.jpg)
 
 ## data
 
