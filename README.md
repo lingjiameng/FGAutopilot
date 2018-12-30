@@ -11,7 +11,7 @@
 - `autopilot.py` 所有自动驾驶的控制算法实现的地方
 - code structure
 
-![struct](struct.jpg)
+![struct](doc/struct.jpg)
 
 ## data
 
