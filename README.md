@@ -2,6 +2,11 @@
 
 **important:** create folder`data/flylog` in the same directory before you run the code.
 
+## environment
+
+- python3.7
+- pandas 
+
 ## code
 
 - `client.py` 主程序
@@ -9,7 +14,7 @@
     - 程序输入回车结束运行
 - `server.py` 模仿flight gear 收发数据，用于代码调试
 - `autopilot.py` 所有自动驾驶的控制算法实现的地方
-- code structure
+- code stucture
 
 ![struct](doc/struct.jpg)
 
@@ -18,6 +23,7 @@
 - we will save all the fly log in folder `data/flylog`. their named by the time the log created.
 - input format
     - input send from flight gear in every 0.1s
+- **all the parameters are introduced in `data/fg参数_v0.pdf `**
 
 ## sys
 
@@ -32,3 +38,18 @@
 - 水平飞行（horizontal flight）
 - 定常飞行（steady flight）
 - 操作杆转弯
+
+## config & cmd
+
+- `F:\FlightGear 2018.2.2\data\Docs\README.IO`
+- setting for udp 
+    ```
+    --httpd=5500
+    --generic=socket,in,10,127.0.0.1,5701,udp,udp_input
+    --generic=socket,out,10,127.0.0.1,5700,udp,udp_output
+    ```
+- [cmd line help doc link](http://flightgear.sourceforge.net/getstart-en/getstart-enpa2.html)
+- quick replay
+    Load Flight Recorder Tape (Shift-F1) load a pre-recorded flight to play back.
+    Save Flight Recorder Tape (Shift-F2) saves the current flight to play back later.
+

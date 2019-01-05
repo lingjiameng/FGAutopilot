@@ -25,6 +25,7 @@ class AutoPilot():
         frame = self.frame2dict(frame)
         
         control_frame = self.pidcontrol(frame)
+        # control_frame = ",,,,\n"
         return control_frame
 
     def save_model(self):

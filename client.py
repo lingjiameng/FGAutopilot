@@ -1,5 +1,5 @@
 import socket
-import numpy
+import numpy as np
 import threading
 import time
 import datetime
@@ -128,9 +128,7 @@ def procer(in_frames=Queue(), out_frames=Queue()):
         while not in_frames.empty():
             frame = in_frames.get()
             historybuffer.insert(0, frame)
-            # print(frame)
             print("[historybuffer size : %d ]" % len(historybuffer))
-            # pprint.pprint(frame)
         # delay about 0.005
         
         historybuffer = historybuffer[:MAXHISTORYBUFFERSIZE]
@@ -140,8 +138,6 @@ def procer(in_frames=Queue(), out_frames=Queue()):
         print("[autopilot react once]")
         print(time.clock()-timebefore)
 
-        # print(frame)
-        # print(historybuffer)
         # control_frame = RL(frame, historybuffer) 
         control_frame = auto.pilot(frame, historybuffer)
 
