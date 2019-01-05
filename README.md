@@ -9,11 +9,15 @@
 
 ## code
 
-- `client.py` 主程序
-    - 默认100s后关闭，如需更改，只需更改文件尾`time.sleep(90)`为`input()`,增加主程序休眠时间
-    - 程序输入回车结束运行
-- `server.py` 模仿flight gear 收发数据，用于代码调试
-- `autopilot.py` 所有自动驾驶的控制算法实现的地方
+- `autopilot.py` 主程序
+    - 内部定义autopilot 类，包含pid自动驾驶的控制算法实现
+    - 主程序为 `__main__`部分，详见注释
+- `data_analysis.py`  用于分析飞行日志(`data/flylog`)，数据分析工具
+- `DRLmodel` 存储深度强化学习模型代码，待实现
+- `fgmodule` 存储我们编写的与`flightgear`通信的模块
+    - `fgudp.py`  flightgear通信主要模块。状态接收和控制帧发送
+    - `fgcmd.py`  实现fg远程命令行控制，复位等功能（TODO）
+- `modulesplus` 一些额外的模块
 - code stucture
 
 ![struct](doc/struct.jpg)
