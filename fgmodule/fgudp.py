@@ -8,6 +8,7 @@ import random
 import os
 import pandas as pd
 from queue import Queue
+import copy
 
 
 RECEBUFFERSIZE = 100 #接收数据后存入文件的buffer大小
@@ -60,7 +61,7 @@ class fgudp():
             os.mkdir(self.logpath)
         else:
             print("flylog saving path check pass!")
-            
+
         t_rece = threading.Thread(
             target=self.receiver, args=(self.fg2client_addr, self.my_in_frames))
         t_sender = threading.Thread(
@@ -75,6 +76,10 @@ class fgudp():
         t_rece.start()
         t_procer.start()
         t_sender.start()
+
+        # 阻塞至飞机初始化完成
+        self.inframe = self.my_in_frames.get()
+        self.historybuffer.insert(0, self.inframe)
         pass
 
     def receiver(self,fg2client_addr, in_frames=Queue()):
@@ -143,9 +148,7 @@ class fgudp():
             print('sender %d-th frame' % count)
 
     def procer(self, in_frames=Queue(), out_frames=Queue()):
-        time.sleep(1)  # 等待接收线程初始话完成
-        self.inframe = in_frames.get()
-
+        time.sleep(1)  # 等待接收线程初始化完成
         while True:
             #接受数据
             self.inframe = in_frames.get()
@@ -164,13 +167,13 @@ class fgudp():
             print(time.clock()-timebefore)
     
     def get_state(self):
-        return self.inframe,self.historybuffer
+        return copy.deepcopy(self.inframe),self.historybuffer
 
     def send_controlframe(self,control_frame):
         #发送控制帧
         self.my_out_frames.put(control_frame)
         #返回当前状态
-        return self.inframe, self.historybuffer
+        return copy.deepcopy(self.inframe),self.historybuffer
 
 
 def RL(frame):

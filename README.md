@@ -53,3 +53,5 @@
     Load Flight Recorder Tape (Shift-F1) load a pre-recorded flight to play back.
     Save Flight Recorder Tape (Shift-F2) saves the current flight to play back later.
 
+## issues
+- pid control works not very well, 使用pid算法 飞行几分钟后，飞机会大幅度摇晃而失控坠机，估计为系统延时问题。

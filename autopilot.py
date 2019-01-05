@@ -1,4 +1,7 @@
 import time
+import DRLmodel.takeoff_dqn as tfdqn
+import fgmodule.fgudp as fgudp
+import modulesplus.PID as PID
 
 class AutoPilot():
     def __init__(self,frame):
@@ -103,3 +106,30 @@ class AutoPilot():
         control_frame = "%f,%f,%f,%f,%f\n" % (self.aileron, self.elevator,
                                               self.rudder, self.throttle0, self.throttle1)
         return control_frame
+
+
+
+########################################################
+########### 自动飞行主程序 ###############################
+if __name__ == "__main__":
+    print("client begin!")
+    input("press enter to continue!")
+
+    ## 初始化flightgear 通信端口
+    fg2client_addr = ("127.0.0.1", 5700)
+    client2fg_addr = ("127.0.0.1", 5701)
+    myfg = fgudp.fgudp(fg2client_addr, client2fg_addr)
+    myfg.initalize()
+
+    ## 初始化自动驾驶模块
+    mypilot =  AutoPilot(myfg.get_state()[0])
+
+    ## 开始自动飞行
+    while True:
+        # print(myfg.inframe)
+        # print(myfg.get_state()[0]['frame'])
+        output = mypilot.pilot(myfg.get_state()[0],myfg.get_state()[1])
+        myfg.send_controlframe(output)
+        ##限制收发频率
+        time.sleep(0.1)
+
