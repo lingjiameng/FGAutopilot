@@ -20,7 +20,7 @@
 - `modulesplus` 一些额外的模块
 - code stucture
 
-![struct](doc/struct.jpg)
+![struct](doc/struct_v0.1.1.jpg)
 
 ## data
 
