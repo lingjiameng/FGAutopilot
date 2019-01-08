@@ -16,7 +16,7 @@
 - `DRLmodel` 存储深度强化学习模型代码，待实现
 - `fgmodule` 存储我们编写的与`flightgear`通信的模块
     - `fgudp.py`  flightgear通信主要模块。状态接收和控制帧发送
-    - `fgcmd.py`  实现fg远程命令行控制，复位等功能（TODO）
+    - `fgcmd.py`  实现fg远程命令行控制，复位等功能
 - `modulesplus` 一些额外的模块
 - code stucture
 
@@ -46,16 +46,29 @@
 ## config & cmd
 
 - `F:\FlightGear 2018.2.2\data\Docs\README.IO`
+
 - setting for udp 
     ```
+    --telnet=5555
     --httpd=5500
     --generic=socket,in,10,127.0.0.1,5701,udp,udp_input
     --generic=socket,out,10,127.0.0.1,5700,udp,udp_output
     ```
+
 - [cmd line help doc link](http://flightgear.sourceforge.net/getstart-en/getstart-enpa2.html)
+
+- [telnet help](http://wiki.flightgear.org/Telnet_usage#nasal?tdsourcetag=s_pctim_aiomsg) **this is very important for using telnet, please read carefully**
+
 - quick replay
     Load Flight Recorder Tape (Shift-F1) load a pre-recorded flight to play back.
     Save Flight Recorder Tape (Shift-F2) saves the current flight to play back later.
+    we can also use (Ctrl-R) to make a quick replay
+
+- some important props 
+    ```
+    /sim/model/autostart  #设置飞机autostart的值
+    /controls/gear/brake-parking #设置飞机停车刹车
+    ```
 
 ## issues
 - pid control works not very well, 使用pid算法 飞行几分钟后，飞机会大幅度摇晃而失控坠机，估计为系统延时问题。

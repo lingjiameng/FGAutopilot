@@ -2,6 +2,7 @@ import time
 import DRLmodel.takeoff_dqn as tfdqn
 import fgmodule.fgudp as fgudp
 import modulesplus.PID as PID
+import fgmodule.fgcmd as fgcmd
 
 class AutoPilot():
     def __init__(self,frame):
@@ -12,6 +13,17 @@ class AutoPilot():
         self.rudder = 0.0 
         self.throttle0 = 0.0 
         self.throttle1 = 0.0 
+        self.roll_1 = 0.0  # roll info of t-1
+        self.roll_2 = 0.0  # roll info of t-2
+    
+    def zero(self):
+        self.fly_mode = 1  # 起飞模式
+
+        self.aileron = 0.0
+        self.elevator = 0.0
+        self.rudder = 0.0
+        self.throttle0 = 0.0
+        self.throttle1 = 0.0
         self.roll_1 = 0.0  # roll info of t-1
         self.roll_2 = 0.0  # roll info of t-2
 
@@ -108,28 +120,48 @@ class AutoPilot():
         return control_frame
 
 
+##
+epoch = 10
+step = 1000
+
 
 ########################################################
 ########### 自动飞行主程序 ###############################
 if __name__ == "__main__":
     print("client begin!")
-    input("press enter to continue!")
+    # input("press enter to continue!")
 
     ## 初始化flightgear 通信端口
     fg2client_addr = ("127.0.0.1", 5700)
     client2fg_addr = ("127.0.0.1", 5701)
+    telnet_addr = ("127.0.0.1", 5555)
+
     myfg = fgudp.fgudp(fg2client_addr, client2fg_addr)
     myfg.initalize()
+    myfgcmd = fgcmd.FG_CMD(telnet_addr)
 
     ## 初始化自动驾驶模块
     mypilot =  AutoPilot(myfg.get_state()[0])
+    myfgcmd.auto_start()
 
     ## 开始自动飞行
-    while True:
+    for i in range(epoch):
         # print(myfg.inframe)
         # print(myfg.get_state()[0]['frame'])
-        output = mypilot.pilot(myfg.get_state()[0],myfg.get_state()[1])
-        myfg.send_controlframe(output)
-        ##限制收发频率
-        time.sleep(0.1)
+        myfgcmd.reposition()
+        mypilot.zero()
+        time.sleep(5)
+        mypilot.zero()
+        for s in range(step):
+            output = mypilot.pilot(myfg.get_state()[0],myfg.get_state()[1])
+            
+            myfg.send_controlframe(output)
+            
+            ##限制收发频率
+            time.sleep(0.1)
+            
+        
+
+        
+        
 
