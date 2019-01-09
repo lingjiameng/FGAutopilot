@@ -5,6 +5,7 @@ import DRLmodel.takeoff_dqn as tfdqn
 import fgmodule.fgudp as fgudp
 import modulesplus.PID as PID
 import fgmodule.fgcmd as fgcmd
+import fgmodule.fgenv as fgenv
 from autopilot import AutoPilot
 from stable_baselines import PPO2
 from stable_baselines import DQN
@@ -12,7 +13,7 @@ from stable_baselines import DQN
 
 ##
 epoch = 10
-step = 1000
+step = 3000
 
 
 ########################################################
@@ -26,33 +27,36 @@ if __name__ == "__main__":
     client2fg_addr = ("127.0.0.1", 5701)
     telnet_addr = ("127.0.0.1", 5555)
 
-    myfg = fgudp.fgudp(fg2client_addr, client2fg_addr)
-    myfg.initalize()
-    myfgcmd = fgcmd.FG_CMD(telnet_addr)
+    # myfg = fgudp.fgudp(fg2client_addr, client2fg_addr)
+    # myfg.initalize()
+    # myfgcmd = fgcmd.FG_CMD(telnet_addr)
+    myfgenv = fgenv.fgenv(telnet_addr, fg2client_addr, client2fg_addr)
+    initial_state =myfgenv.initial()
 
     ## 初始化自动驾驶模块
-    mypilot = AutoPilot(myfg.get_state()[0])
-    myfgcmd.auto_start()
+    # mypilot = AutoPilot(myfg.get_state()[0])
+    mypilot = AutoPilot()
+    
+
+    # myfg.initalize()
 
     ## 开始自动飞行
     for i in range(epoch):
         # print(myfg.inframe)
         # print(myfg.get_state()[0]['frame'])
-        myfgcmd.reposition()
-        mypilot.zero()
-        time.sleep(5)
+        ob = myfgenv.reset()
         mypilot.zero()
         for s in range(step):
-            state_dict = myfg.get_state()[0]
-            state = np.array([value for value in state_dict.values()])
-            # print(state_dict,)
-            # print(state)
-            # break
-            output = mypilot.pilot(myfg.get_state()[0], myfg.get_state()[1])
 
-            myfg.send_controlframe(output)
+            # just for test, so use not really ob
+            ob, _ = myfgenv.fgudp.get_state()
 
+            next_action = mypilot.pilot(ob)
+
+            ob, reward, done, _ = myfgenv.step(next_action)
+            if done:
+                break
+
+            print(ob)
             ##限制收发频率
             time.sleep(0.1)
-
-        # break

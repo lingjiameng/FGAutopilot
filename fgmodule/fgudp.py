@@ -69,7 +69,14 @@ def dict2df(dict):
 #     while True:
 #         historybuffer.insert(0, frames.get())
 
-class fgudp():
+class fgudp:
+    '''
+    fgudp FlightGear udp communicate interface
+
+    function:
+    send control frame to flightgear
+    recv state frame from flightgear
+    '''
     def __init__(self, fg2client_addr, client2fg_addr, logpath="data/flylog"):
         self.fg2client_addr = fg2client_addr
         self.client2fg_addr = client2fg_addr
@@ -125,6 +132,7 @@ class fgudp():
 
         # timebefore = time.clock()
         print('Bind UDP on %s:%s !' % fg2client_addr)
+        print("save log to", self.logpath)
         while True:
             # timenew =  time.clock()
             # print(timenew - timebefore)
@@ -144,15 +152,15 @@ class fgudp():
             framebuffer = framebuffer.append(
                 dict2df(data_dict), ignore_index=True, sort=False)
             if(buffercount % 100 == 0):
-                print("save log to",self.logpath)
+                # print("save log to",self.logpath)
                 # print(framebuffer)
                 framebuffer.to_csv(logfile,mode = 'a', index=False,header=False)
                 framebuffer = pd.DataFrame(data=None, columns=framebuffer.columns)
             buffercount += 1
 
-            print('Received from %s:%s.' % addr, end=":")
+            # print('Received from %s:%s.' % addr, end=":")
             # print("recive frame", data_dict["frame"])
-            print("recive frame", data_dict["hi-heading"])
+            # print("recive frame", data_dict["hi-heading"])
 
     def sender(self, client2fg_addr, out_frames=Queue()):
         sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -172,7 +180,7 @@ class fgudp():
             #               count + control_frame.encode("utf-8"), client2fg_addr)
             sender.sendto(control_frame.encode("utf-8"), client2fg_addr)
 
-            print('sender %d-th frame' % count)
+            # print('sender %d-th frame' % count)
 
     def procer(self, in_frames=Queue(), out_frames=Queue()):
         time.sleep(1)  # 等待接收线程初始化完成
@@ -185,13 +193,13 @@ class fgudp():
             while not in_frames.empty():
                 self.inframe = in_frames.get()
                 self.historybuffer.insert(0, self.inframe)
-                print("[historybuffer size : %d ]" % len(self.historybuffer))
+                # print("[historybuffer size : %d ]" % len(self.historybuffer))
             # delay about 0.005
             
             self.historybuffer = self.historybuffer[:MAXHISTORYBUFFERSIZE]
   
-            print("[get input data once]")
-            print(time.clock()-timebefore)
+            # print("[get input data once]")
+            # print("delay: ",time.clock()-timebefore)
     
     def get_state(self):
         return copy.deepcopy(self.inframe),self.historybuffer
@@ -201,6 +209,9 @@ class fgudp():
         self.my_out_frames.put(control_frame)
         #返回当前状态
         return copy.deepcopy(self.inframe),self.historybuffer
+    
+    def block4ready(self):
+        pass
 
 
 def RL(frame):

@@ -1,6 +1,6 @@
 import time
 class AutoPilot():
-    def __init__(self,frame):
+    def __init__(self,frame = None):
         self.fly_mode = 1 #起飞模式  
 
         self.aileron = 0.0
@@ -22,11 +22,11 @@ class AutoPilot():
         self.roll_1 = 0.0  # roll info of t-1
         self.roll_2 = 0.0  # roll info of t-2
 
-    def takeoff(self,frame, buffer):
+    def takeoff(self,frame):
         pass
 
-    def pilot(self,frame,buffer):
-              
+    def pilot(self,frame):
+
         control_frame = self.pidcontrol(frame)
         # control_frame = ",,,,\n"
         return control_frame

@@ -72,3 +72,9 @@
 
 ## issues
 - pid control works not very well, 使用pid算法 飞行几分钟后，飞机会大幅度摇晃而失控坠机，估计为系统延时问题。
+
+## TODO or Question
+
+- function of `fgenv.py`
+- reward 是否应该自行判断飞行模式以给定不同的reward（由人编写以引导强化学习达到预定目标）
+
