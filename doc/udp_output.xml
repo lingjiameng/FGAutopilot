@@ -16,12 +16,12 @@
 		<output>
 			<line_separator>newline</line_separator>
 			<var_separator>,</var_separator>
-			<chunk>
+			<!-- <chunk>
 				<name>clock-indicated</name>
 				<type>string</type>
 				<format>clock-indicated=%s</format>
 				<node>/instrumentation/clock/indicated-string</node>
-			</chunk>
+			</chunk> -->
 			<chunk>
 				<name>aileron</name>
 				<type>double</type>
@@ -231,6 +231,12 @@
 				<type>double</type>
 				<format>altitude=%f</format>
 				<node>/position/altitude-ft</node>
+			</chunk>
+			<chunk>
+				<name>crashed</name>
+				<type>bool</type>
+				<format>crashed=%d</format>
+				<node>/sim/crashed</node>
 			</chunk>
 <!--
 			<chunk>

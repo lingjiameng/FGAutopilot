@@ -31,13 +31,39 @@ def format_data(data_frame):
     for data in data_list:
         data = data.split('=')
         try:
-            data_dict[data[0]] = [float(data[1])]
+            data_dict[data[0]] = float(data[1])
         except ValueError:
             if len(data[1]) == 0:
-                data_dict[data[0]] = [""]
+                data_dict[data[0]] = ""
             else:
-                data_dict[data[0]] = [parse_hms(data[1])]
+                data_dict[data[0]] = parse_hms(data[1])
     return data_dict
+
+def data2dict(data_frame):
+    '''
+    new version for data format
+    Input:
+        flightgear udp data frame
+    Output:
+        dict with all values are double
+    v0.0 details:
+        no clock time need to pay attention to.
+        all the values are double
+    '''
+    data_list = data_frame.split(',')
+    data_dict = dict()
+    for data in data_list:
+        data = data.split('=')
+        data_dict[data[0]] = float(data[1])
+    return data_dict
+
+def dict2df(dict):
+    '''
+    trans dict to pandas DataFrame
+    '''
+    #关键点：将字典放入列表再转换可以避免错误
+    return pd.DataFrame.from_dict([dict])
+
 
 # def data2buffer(frames, historybuffer=[]):
 #     while True:
@@ -89,9 +115,9 @@ class fgudp():
         # rece first frame as header
         data, addr = rece.recvfrom(1024)
         data = data.decode('utf-8')
-        data_dict = format_data(data)
+        data_dict = data2dict(data)
 
-        framebuffer = pd.DataFrame.from_dict(data_dict)
+        framebuffer = dict2df(data_dict)
         
         logfile = self.logpath + "/log"+gettime() + ".csv"
         framebuffer.to_csv(logfile, mode='a', index=False, header=True)
@@ -112,10 +138,11 @@ class fgudp():
 
             data, addr = rece.recvfrom(1024)
             data = data.decode('utf-8')
-            data_dict = format_data(data)
+            data_dict = data2dict(data)
             in_frames.put(data_dict) 
 
-            framebuffer=framebuffer.append(pd.DataFrame.from_dict(data_dict),ignore_index=True,sort=False)
+            framebuffer = framebuffer.append(
+                dict2df(data_dict), ignore_index=True, sort=False)
             if(buffercount % 100 == 0):
                 print("save log to",self.logpath)
                 # print(framebuffer)
