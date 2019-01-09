@@ -21,7 +21,8 @@ class fgenv:
 
         self.action_space = None
         self.state_space = None
-        self.initial_state = None
+        self.initial_state = None #记录飞机初始状态 （数组）用于drl
+        self.initial_state_dict = dict() # 同样记录飞机初始状态 （字典）用于reward设计
 
     def initial(self):
         # 先进行udp的初始化
@@ -100,7 +101,10 @@ class fgenv:
         time.sleep(3)
 
         state_dict, _ = self.fgudp.get_state()
-        
+
+        # TODO: 临时初始化飞机初始状态
+        self.initial_state_dict = state_dict
+
         ob = self.state_dict2ob(state_dict)
         
         return ob
