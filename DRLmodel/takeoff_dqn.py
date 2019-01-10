@@ -30,13 +30,20 @@ class DQN():
         self.epsilon = INITIAL_EPSILON
         self.state_dim = state_dim
         self.action_dim = action_dim
-
         self.create_Q_network()
         self.create_training_method()
+
+        self.saver = tf.train.Saver()
 
         # Init session
         self.session = tf.InteractiveSession()
         self.session.run(tf.initialize_all_variables())
+
+    def load(self,path):
+        self.saver.restore(self.session, path)
+
+    def save(self,path):
+        self.saver.save(self.session, save_path=path)
 
     def create_Q_network(self): #创建Q网络
          # network weights

@@ -11,6 +11,7 @@ class fgenv:
     more details in readme.md
 
     function:
+        initial() need to be done right after class create
         step()
         reset()
 
@@ -21,6 +22,8 @@ class fgenv:
 
         self.action_space = None
         self.state_space = None
+        self.state_dim = 0
+        self.action_dim = 5
         self.initial_state = None #记录飞机初始状态 （数组）用于drl
         self.initial_state_dict = dict() # 同样记录飞机初始状态 （字典）用于reward设计
 
@@ -37,6 +40,7 @@ class fgenv:
 
         self.initial_state = self.reset()
         self.state_space = len(self.initial_state)
+        self.state_dim = self.state_space
         return self.initial_state
 
     def step(self,action):
@@ -100,7 +104,7 @@ class fgenv:
         self.fgcmd.reposition()
         time.sleep(3)
 
-        state_dict, _ = self.fgudp.get_state()
+        state_dict = self.fgudp.my_in_frames.get()
 
         # TODO: 临时初始化飞机初始状态
         self.initial_state_dict = state_dict
@@ -189,14 +193,46 @@ class fgenv:
         '''
         # 根据state_dict 自行判断飞机所在飞行模式,以按不同公式计算reward
         reward = 0.0
-
+        head_init = self.initial_state_dict['heading-deg']
+        # head_init是每次初始化时飞机的heading-deg
+        reward = np.exp(-1 * (min(abs(state_dict['heading-deg'] - head_init), 360 - abs(
+            state_dict['heading-deg'] - head_init)))**2)
         return reward
 
     def judge_over(self, state_dict):
         # 判断此次飞行模拟是否结束，即flighgear中飞机是否坠毁
         over = False
+
+        count = 0 
+        # crash
         if int(state_dict["crashed"])==1:
             over = True
+        # stable
+        if abs(state_dict["airspeed-kt"]) < 1.3:
+            count+=1
+        else:
+            count = 0
+        if(count >100):
+            over = True
+
+        # out runway 21.325247
+        if abs(state_dict["latitude"]-21.325247) > 0.0004:
+            over = True
+
         return over
+    
+    def stop(self):
+        '''
+        due to the low performance of running flightgear for a long time
+        we wite a function to stop whole fgenv module 
+        '''
+        # 重置flightgear环境
+        self.fgcmd.reset()
+        time.sleep(2)
+        # 关闭fgudp 和fgcmd 端口 
+        self.fgudp.stop()
+        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+        self.fgudp.my_in_frames.put(self.initial_state_dict)
+        self.fgcmd.quit()
 
     

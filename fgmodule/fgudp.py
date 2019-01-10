@@ -85,8 +85,13 @@ class fgudp:
         self.historybuffer = []
         self.inframe = dict()
         self.logpath = logpath #飞行日志存储文件目录
+        self.tostop = False
 
-
+    def stop(self):
+        '''
+        call this function to make all sub thread quit
+        '''
+        self.tostop = True
 
     def initalize(self):
         if not os.path.exists(self.logpath):
@@ -113,6 +118,8 @@ class fgudp:
         # 阻塞至飞机初始化完成
         self.inframe = self.my_in_frames.get()
         self.historybuffer.insert(0, self.inframe)
+
+        
         pass
 
     def receiver(self,fg2client_addr, in_frames=Queue()):
@@ -133,7 +140,7 @@ class fgudp:
         # timebefore = time.clock()
         print('Bind UDP on %s:%s !' % fg2client_addr)
         print("save log to", self.logpath)
-        while True:
+        while not self.tostop:
             # timenew =  time.clock()
             # print(timenew - timebefore)
             # timebefore = timenew
@@ -161,6 +168,9 @@ class fgudp:
             # print('Received from %s:%s.' % addr, end=":")
             # print("recive frame", data_dict["frame"])
             # print("recive frame", data_dict["hi-heading"])
+        #关闭udp通信接受端口
+        print('UDP rece on %s:%s stop!' % fg2client_addr)
+        rece.close()
 
     def sender(self, client2fg_addr, out_frames=Queue()):
         sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -168,7 +178,7 @@ class fgudp:
         print("send data to %s:%s !" % client2fg_addr)
 
         count = 0
-        while True:
+        while not self.tostop:
             # time.sleep(1)
             count += 1
             ########################
@@ -181,13 +191,16 @@ class fgudp:
             sender.sendto(control_frame.encode("utf-8"), client2fg_addr)
 
             # print('sender %d-th frame' % count)
+        #关闭udp通信发送端口
+        print("send data to %s:%s stop!" % client2fg_addr)
+        sender.close()
 
     def procer(self, in_frames=Queue(), out_frames=Queue()):
         time.sleep(1)  # 等待接收线程初始化完成
-        while True:
+        while not self.tostop:
             #接受数据
             self.inframe = in_frames.get()
-            timebefore = time.clock()
+            # timebefore = time.clock()
             self.historybuffer.insert(0, self.inframe)
             # 放止运算过快，而来不及得到状态信息就进行新的计算
             while not in_frames.empty():
@@ -200,7 +213,7 @@ class fgudp:
   
             # print("[get input data once]")
             # print("delay: ",time.clock()-timebefore)
-    
+        print("fgudp procer stop!!!")
     def get_state(self):
         return copy.deepcopy(self.inframe),self.historybuffer
 

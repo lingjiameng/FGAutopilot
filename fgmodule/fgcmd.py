@@ -177,6 +177,7 @@ class FG_CMD:
 
     # reposition命令
     def reposition(self):
+        # self.__setitem__("/controls/")
         self.telnet._putcmd("run reposition")
         print("reposition完成", end=' ')
         self.print_local_time()

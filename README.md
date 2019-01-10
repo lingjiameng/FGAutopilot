@@ -18,9 +18,9 @@
     - `fgudp.py`  flightgear通信主要模块。状态接收和控制帧发送
     - `fgcmd.py`  实现fg远程命令行控制，复位等功能
 - `modulesplus` 一些额外的模块
-- code stucture
+- code stucture  **`fgudp.py`已实现飞行日志保存** 
 
-![struct](doc/struct_v0.1.1.jpg)
+![struct](doc/struct_v0.1.4.jpg)
 
 ## data
 
@@ -68,13 +68,43 @@
     ```
     /sim/model/autostart  #设置飞机autostart的值
     /controls/gear/brake-parking #设置飞机停车刹车
+    /sim/crashed #设置飞机是否坠毁
     ```
 
 ## issues
 - pid control works not very well, 使用pid算法 飞行几分钟后，飞机会大幅度摇晃而失控坠机，估计为系统延时问题。
+- fg飞机停止飞行但是未坠毁的bug
 
-## TODO or Question
+## TODO
 
-- function of `fgenv.py`
-- reward 是否应该自行判断飞行模式以给定不同的reward（由人编写以引导强化学习达到预定目标）
+#### fgenv
 
+- 状态空间和动作空间的确定？
+
+- 怎么判断飞行的阶段？以调用不同模型或reward函数？
+
+- 怎么计算reward？，分阶段还是分模型
+- 怎么判断飞行是否结束？（针对fg飞机停止飞行但是未坠毁的bug）
+- 飞机状态数据处理？不同的量纲如何处理
+
+#### DRL model
+
+- 状态空间和动作空间的确定？
+    -  如果强化学习算法给出结果足够快的话, 可以使用离散的$(-1,0,1)*delta$的动作空间？
+- 训练过程保存，用保存的数据进行离线学习？
+- 分阶段训练模型？
+
+- DQN 
+    - Q_value network 搭建
+    - train method
+- PPO2
+
+## relative work
+
+1， <https://blog.openai.com/openai-baselines-ppo/> 这个网站的第一个视频与咱们的工作有相似之处 OpenAI
+
+2，<https://github.com/openai/baselines> OpenAI的深度强化学习库
+
+3，<https://github.com/hill-a/stable-baselines>  一个基于上面的库的改进版本的库
+
+4，<https://morvanzhou.github.io/tutorials/machine-learning/reinforcement-learning/4-1-A-DQN/> 莫凡python的DQN教程
