@@ -1,33 +1,53 @@
 # FG Autopilot
 
-**important:** create folder`data/flylog` in the same directory before you run the code.
-
 ## environment
 
 - python3.7
 - pandas 
 
+## install
+
+1. Install FlightGear in your computer
+
+2. put `udp_input.xml`, `udp_output.xml` into folder `FG_ROOT/data/Protocol`
+
+3. start flight gear and  add below command line option into flightgear setting page
+
+    ```
+    --telnet=5555
+    --httpd=5500
+    --generic=socket,in,10,127.0.0.1,5701,udp,udp_input
+    --generic=socket,out,10,127.0.0.1,5700,udp,udp_output
+    ```
+
+4. just type `python trainpilot.py`!! 
+
+5. **[tips] next time you only need to start flightgear and do step 4. you don't need to do step1-3 again**
+
 ## code
 
-- `autopilot.py` 主程序
-    - 内部定义autopilot 类，包含pid自动驾驶的控制算法实现
-    - 主程序为 `__main__`部分，详见注释
+- `trainpilot.py` 主程序
+    - 训练模型主程序，已实现`pid`和简单`dqn`
 - `data_analysis.py`  用于分析飞行日志(`data/flylog`)，数据分析工具
-- `DRLmodel` 存储深度强化学习模型代码，待实现
+- `DRLmodel` 存储深度强化学习模型代码
+    - `takeoff_dqn.py` 简单dqn模型用于起飞
+    - PPO2 等模型待实现
 - `fgmodule` 存储我们编写的与`flightgear`通信的模块
     - `fgudp.py`  flightgear通信主要模块。状态接收和控制帧发送
     - `fgcmd.py`  实现fg远程命令行控制，复位等功能
+    - `fgenv.py` 将`fgudp` 和`fgcmd`进行封装, 详细功能见注释
+        - `initial()`
+        - `step()`
+        - `reposition()` 
+        - `reset()`
 - `modulesplus` 一些额外的模块
+    - `pidautopilot.py` 内部定义autopilot 类，包含pid自动驾驶的控制算法实现
+- `doc` some important doc about flightgear and our research
+    - **all the parameters are introduced in `doc/fg参数_v0.pdf `**
+- `data` we will save all the fly log in folder `data/flylog`. their named by the time when the log created.
 - code stucture  **`fgudp.py`已实现飞行日志保存** 
 
 ![struct](doc/struct_v0.1.4.jpg)
-
-## data
-
-- we will save all the fly log in folder `data/flylog`. their named by the time the log created.
-- input format
-    - input send from flight gear in every 0.1s
-- **all the parameters are introduced in `data/fg参数_v0.pdf `**
 
 ## sys
 
@@ -80,12 +100,11 @@
 #### fgenv
 
 - 状态空间和动作空间的确定？
-
 - 怎么判断飞行的阶段？以调用不同模型或reward函数？
-
 - 怎么计算reward？，分阶段还是分模型
 - 怎么判断飞行是否结束？（针对fg飞机停止飞行但是未坠毁的bug）
 - 飞机状态数据处理？不同的量纲如何处理
+- **1）整合restart，简化训练形式。2）fgudp去除procer线程 3)fgenv属性值初始化优化**
 
 #### DRL model
 
@@ -93,11 +112,11 @@
     -  如果强化学习算法给出结果足够快的话, 可以使用离散的$(-1,0,1)*delta$的动作空间？
 - 训练过程保存，用保存的数据进行离线学习？
 - 分阶段训练模型？
-
 - DQN 
     - Q_value network 搭建
     - train method
-- PPO2
+- PPO2、
+- 结合pid和强化学习。对控制信息和状态转移进行融合，加入replay buffer 进行学习？ an important work to do
 
 ## relative work
 

@@ -59,8 +59,13 @@ class FGTelnet(Telnet):
         self._getresp()  # Discard response
 
     def quit(self):
-        """Terminate connection"""
-        self._putcmd('quit')
+        """Terminate connection and quit flightgear"""
+        self._putcmd('run quit')
+        self.close()
+        return
+
+    def stop(self):
+        '''stop telnet connection'''
         self.close()
         return
 
@@ -102,8 +107,12 @@ class FG_CMD:
     """
 
     def __init__(self, address):
+        self.address = address
+        self.telnet = None
+        
+    def start(self):
         try:
-            self.telnet = FGTelnet(address[0], address[1])
+            self.telnet = FGTelnet(self.address[0], self.address[1])
         except socket.error:
             self.telnet = None
             raise socket.error
@@ -145,9 +154,15 @@ class FG_CMD:
 
     # 断开连接 没有测试
     def quit(self):
-        """Close the telnet connection to FlightGear."""
+        """Close the telnet connection to FlightGear and quit Flight gear."""
         if self.telnet:
             self.telnet.quit()
+            self.telnet = None
+
+    def stop(self):
+        """Close the telnet connection to FlightGear"""
+        if self.telnet:
+            self.telnet.stop()
             self.telnet = None
 
     #move to next view

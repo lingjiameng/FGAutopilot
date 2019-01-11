@@ -29,7 +29,8 @@ class fgenv:
 
     def initial(self):
         # 先进行udp的初始化
-        self.fgudp.initalize()
+        self.fgudp.start()
+        self.fgcmd.start()
         self.fgcmd.auto_start()
 
         self.action_space = 5
@@ -80,7 +81,7 @@ class fgenv:
         # 估计以后要修改为多种形式
         # dqn 为离散型的值，然后对应五个控制量，需要转换 并且格式化为control frame
         # ppo2 为连续的值，可能只需要格式化
-        state_dict, _ = self.fgudp.send_controlframe(action)
+        state_dict = self.fgudp.send_controlframe(action)
         
         # TODO: 增加数据的归一化过程 效果会更好
         ob = self.state_dict2ob(state_dict)
@@ -96,21 +97,65 @@ class fgenv:
         return  ob, reward, episode_over, info
 
     def reset(self):
-        """Resets the state of the environment and returns an initial observation.
+        """
+        Resets the state of the environment and returns an initial observation.
+        but due to the long time for flightgear reset, use function **reposition()** as more as possible 
 
         Returns: observation (object): the initial observation of the
             space.
         """
-        self.fgcmd.reposition()
-        time.sleep(3)
+        #关闭udp通信端口
+        self.fgudp.stop()
 
-        state_dict = self.fgudp.my_in_frames.get()
+        ## 发送reset指令
+        self.fgcmd.reset()
+        time.sleep(4) # 等待四秒以确认发出
+        # 关闭 telent 通信端口
+        self.fgcmd.stop()
+
+        #fg 通信端口全部关闭，等待重启
+        time.sleep(50)
+
+        # flight gear重启完成后，重启通信端口
+        self.fgudp.start()
+        self.fgcmd.start()
+
+        # 飞机autostart
+        self.fgcmd.auto_start()
+
+        state_dict = self.fgudp.get_state()
 
         # TODO: 临时初始化飞机初始状态
         self.initial_state_dict = state_dict
 
         ob = self.state_dict2ob(state_dict)
-        
+
+        return ob
+
+
+    def reposition(self):
+        """
+        In this function, we only reposition the plane due to the fact that reset while take a long time. 
+        Resets the state of the environment and returns an initial observation.
+
+        Returns: observation (object): the initial observation of the
+            space.
+        """
+        '''
+        使用三次空白控制帧以复位飞机控制器
+        '''
+        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+        # 飞机reposition指令
+        self.fgcmd.reposition()
+        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+        # 等待4秒以提供flight gear运算
+        time.sleep(3)
+        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+
+        # 获取flight gear 初始状态
+        state_dict = self.fgudp.get_state()
+        self.initial_state_dict = state_dict
+        ob = self.state_dict2ob(state_dict)
         return ob
 
     def render(self, mode='human'):
@@ -223,16 +268,13 @@ class fgenv:
     
     def stop(self):
         '''
-        due to the low performance of running flightgear for a long time
-        we wite a function to stop whole fgenv module 
+        
         '''
         # 重置flightgear环境
         self.fgcmd.reset()
         time.sleep(2)
         # 关闭fgudp 和fgcmd 端口 
         self.fgudp.stop()
-        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
-        self.fgudp.my_in_frames.put(self.initial_state_dict)
-        self.fgcmd.quit()
+        self.fgcmd.stop()
 
     

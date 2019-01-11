@@ -10,7 +10,6 @@ import pandas as pd
 from queue import Queue
 import copy
 
-
 RECEBUFFERSIZE = 100 #接收数据后存入文件的buffer大小
 MAXHISTORYBUFFERSIZE = 20 #处理数据线程buffer存储历史数据上限
 
@@ -64,11 +63,6 @@ def dict2df(dict):
     #关键点：将字典放入列表再转换可以避免错误
     return pd.DataFrame.from_dict([dict])
 
-
-# def data2buffer(frames, historybuffer=[]):
-#     while True:
-#         historybuffer.insert(0, frames.get())
-
 class fgudp:
     '''
     fgudp FlightGear udp communicate interface
@@ -80,49 +74,55 @@ class fgudp:
     def __init__(self, fg2client_addr, client2fg_addr, logpath="data/flylog"):
         self.fg2client_addr = fg2client_addr
         self.client2fg_addr = client2fg_addr
-        self.my_in_frames = Queue(100)
-        self.my_out_frames = Queue(100)
-        self.historybuffer = []
-        self.inframe = dict()
         self.logpath = logpath #飞行日志存储文件目录
+
+        self.my_out_frames = Queue(100)
+        self.inframe = dict()
+        self.logfile = logpath + "log.csv"
         self.tostop = False
+        self.t_alive = 0
 
     def stop(self):
         '''
         call this function to make all sub thread quit
         '''
+        print("fgudp stop begin! waiting for 2 thread quit")
         self.tostop = True
 
-    def initalize(self):
+        self.my_out_frames.put("") # make sender thread quit
+        time.sleep(1)
+        while self.t_alive:
+            pass
+
+    def start(self):
         if not os.path.exists(self.logpath):
             print(self.logpath, "not exists! create automatically!")
-            os.mkdir(self.logpath)
+            os.makedirs(os.path.join(os.getcwd(), os.path.normpath(self.logpath))+"\\")
         else:
             print("flylog saving path check pass!")
 
+        # initial some property of fgudp
+        self.tostop = False
+        self.inframe = dict()
+        self.my_out_frames = Queue(100)
+        self.logfile = self.logpath + "/log"+ gettime() + ".csv"
+
         t_rece = threading.Thread(
-            target=self.receiver, args=(self.fg2client_addr, self.my_in_frames))
+            target=self.receiver, args=(self.fg2client_addr,))
         t_sender = threading.Thread(
             target=self.sender, args=(self.client2fg_addr, self.my_out_frames))
-        t_procer = threading.Thread(
-            target=self.procer, args=(self.my_in_frames, self.my_out_frames))
+
 
         t_rece.daemon = True
-        t_procer.daemon = True
         t_sender.daemon = True
 
         t_rece.start()
-        t_procer.start()
         t_sender.start()
+        self.t_alive = 2
 
-        # 阻塞至飞机初始化完成
-        self.inframe = self.my_in_frames.get()
-        self.historybuffer.insert(0, self.inframe)
+        self.block4ready()
 
-        
-        pass
-
-    def receiver(self,fg2client_addr, in_frames=Queue()):
+    def receiver(self,fg2client_addr):
         rece = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         rece.bind(fg2client_addr)
 
@@ -130,11 +130,11 @@ class fgudp:
         data, addr = rece.recvfrom(1024)
         data = data.decode('utf-8')
         data_dict = data2dict(data)
+        self.inframe = data_dict
 
+        # intial log file and log head
         framebuffer = dict2df(data_dict)
-        
-        logfile = self.logpath + "/log"+gettime() + ".csv"
-        framebuffer.to_csv(logfile, mode='a', index=False, header=True)
+        framebuffer.to_csv(self.logfile, mode='a', index=False, header=True)
         buffercount = 0
 
         # timebefore = time.clock()
@@ -145,24 +145,22 @@ class fgudp:
             # print(timenew - timebefore)
             # timebefore = timenew
             
-            # 接收数据:
-            ########################
-            ## if out_frame not full, send one frame
-            # else wait until it not empty
-            # time.sleep(2)
-
             data, addr = rece.recvfrom(1024)
             data = data.decode('utf-8')
             data_dict = data2dict(data)
-            in_frames.put(data_dict) 
+            # test for delay
+            # print("--------delay:{:.6f}------".format(time.time()-data_dict["time"]))
+            # 0.000 or less than 0.0004
+            self.inframe = data_dict
 
             framebuffer = framebuffer.append(
                 dict2df(data_dict), ignore_index=True, sort=False)
             if(buffercount % 100 == 0):
                 # print("save log to",self.logpath)
                 # print(framebuffer)
-                framebuffer.to_csv(logfile,mode = 'a', index=False,header=False)
+                framebuffer.to_csv(self.logfile,mode = 'a', index=False,header=False)
                 framebuffer = pd.DataFrame(data=None, columns=framebuffer.columns)
+                buffercount = 0
             buffercount += 1
 
             # print('Received from %s:%s.' % addr, end=":")
@@ -171,6 +169,7 @@ class fgudp:
         #关闭udp通信接受端口
         print('UDP rece on %s:%s stop!' % fg2client_addr)
         rece.close()
+        self.t_alive-=1
 
     def sender(self, client2fg_addr, out_frames=Queue()):
         sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -194,37 +193,21 @@ class fgudp:
         #关闭udp通信发送端口
         print("send data to %s:%s stop!" % client2fg_addr)
         sender.close()
+        self.t_alive-=1
 
-    def procer(self, in_frames=Queue(), out_frames=Queue()):
-        time.sleep(1)  # 等待接收线程初始化完成
-        while not self.tostop:
-            #接受数据
-            self.inframe = in_frames.get()
-            # timebefore = time.clock()
-            self.historybuffer.insert(0, self.inframe)
-            # 放止运算过快，而来不及得到状态信息就进行新的计算
-            while not in_frames.empty():
-                self.inframe = in_frames.get()
-                self.historybuffer.insert(0, self.inframe)
-                # print("[historybuffer size : %d ]" % len(self.historybuffer))
-            # delay about 0.005
-            
-            self.historybuffer = self.historybuffer[:MAXHISTORYBUFFERSIZE]
-  
-            # print("[get input data once]")
-            # print("delay: ",time.clock()-timebefore)
-        print("fgudp procer stop!!!")
     def get_state(self):
-        return copy.deepcopy(self.inframe),self.historybuffer
+        return copy.deepcopy(self.inframe)
 
     def send_controlframe(self,control_frame):
         #发送控制帧
         self.my_out_frames.put(control_frame)
         #返回当前状态
-        return copy.deepcopy(self.inframe),self.historybuffer
+        return copy.deepcopy(self.inframe)
     
     def block4ready(self):
-        pass
+        while not self.inframe:
+            pass
+        print("fgudp is ready!!!")
 
 
 def RL(frame):
@@ -240,23 +223,25 @@ def RL(frame):
 
 def main():
     print("client begin!")
-    input("press enter to continue!")
+    # input("press enter to continue!")
     fg2client_addr = ("127.0.0.1", 5700)
     client2fg_addr = ("127.0.0.1", 5701)
 
     myfg = fgudp(fg2client_addr,client2fg_addr)
-    myfg.initalize()
 
-    for i in range(100):
-        print(myfg.inframe)
-        output = RL(myfg.inframe)
-        myfg.send_controlframe(output)
+    for j in range(4):
+        myfg.start()
+        for i in range(10):
+            # print(myfg.inframe)
+            output = RL(myfg.inframe)
+            myfg.send_controlframe(output)
+        myfg.stop()
 
     #LAN
     # fg2client_addr = ("192.168.1.109", 5700)
     # client2fg_addr = ("192.168.1.101", 5701)
      
-    input()
+    # input()
     # print("[client shutdown after 100 seconds!]")
     # time.sleep(90)
     # print("[client shutdown after 10 seconds!]")
