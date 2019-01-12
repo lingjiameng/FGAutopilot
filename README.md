@@ -14,6 +14,7 @@
 3. start flight gear and  add below command line option into flightgear setting page
 
     ```
+    --allow-nasal-from-sockets
     --telnet=5555
     --httpd=5500
     --generic=socket,in,10,127.0.0.1,5701,udp,udp_input
