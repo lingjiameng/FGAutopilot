@@ -4,6 +4,7 @@
 
 - python3.7
 - pandas 
+- [geographiclib](https://geographiclib.sourceforge.io/html/python/index.html)
 
 ## install
 
@@ -105,7 +106,8 @@
 - 怎么计算reward？，分阶段还是分模型
 - 怎么判断飞行是否结束？（针对fg飞机停止飞行但是未坠毁的bug）
 - 飞机状态数据处理？不同的量纲如何处理
-- **1）整合restart，简化训练形式。2）fgudp去除procer线程 3)fgenv属性值初始化优化**
+- **~~1）整合restart，简化训练形式。2）fgudp去除procer线程~~ 3)fgenv属性值初始化优化**
+- ~~增加api，增加ob的数据结构，可以返回dict，以方便pid等其他算法使用~~
 
 #### DRL model
 
@@ -116,7 +118,8 @@
 - DQN 
     - Q_value network 搭建
     - train method
-- PPO2、
+- Actor-Critic
+- PPO2
 - 结合pid和强化学习。对控制信息和状态转移进行融合，加入replay buffer 进行学习？ an important work to do
 
 ## relative work

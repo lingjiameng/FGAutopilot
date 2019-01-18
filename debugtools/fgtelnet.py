@@ -9,7 +9,7 @@ def replayandstop(fg):
     re=fg._put_cmd_common_use("run replay")
     re+=fg._put_cmd_common_use("set /sim/freeze/replay-state 3")
     re+=fg._put_cmd_common_use("set /sim/replay/disable true")
-    return RuntimeError
+    return re
 
 def main():
     fg = FG_CMD(('localhost', 5555))

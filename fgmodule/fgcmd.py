@@ -197,6 +197,25 @@ class FG_CMD:
         print("reposition完成", end=' ')
         self.print_local_time()
         return None
+    
+    def replay(self, pos = "ground"):
+        '''
+        input:
+            pos(str)
+                -"ground" 复位至地面
+                -"sky" 复位至天空 TODO:
+        reposition the plane in intial state
+        using fg replay command. it's efficiency
+        '''
+
+        self.telnet._putcmd("run replay")
+        self.telnet._putcmd("set /sim/freeze/replay-state 3")
+        self.telnet._putcmd("set /sim/replay/disable true")
+        self.__setitem__("/sim/model/autostart", 1)
+        self.__setitem__("/controls/gear/brake-parking", 0)
+        print("replay to",pos, "完成!", end='time:')
+        self.print_local_time()
+        return None
 
     # auto start
     def auto_start(self):

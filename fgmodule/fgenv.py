@@ -40,7 +40,7 @@ class fgenv:
         # 副翼, 升降舵, 方向舵, 油门0, 油门1
 
         self.initial_state = self.reset()
-        self.state_space = len(self.initial_state)
+        self.state_space = len(self.initial_state.keys())
         self.state_dim = self.state_space
         return self.initial_state
 
@@ -48,12 +48,13 @@ class fgenv:
         """
             Parameters
             ----------
-            action :
+            action(str) :
+                控制帧
 
             Returns
             -------
             ob, reward, episode_over, info : tuple
-                ob (object) :
+                ob (dict) :
                     an environment-specific object representing your observation of
                     the environment.
                 reward (float) :
@@ -158,6 +159,35 @@ class fgenv:
         ob = self.state_dict2ob(state_dict)
         return ob
 
+    def replay(self, pos = "ground"):
+        """
+        In this function, we only reposition the plane use fg cmd replay 
+        Resets the state of the environment and returns an initial observation.
+        Inputs:
+            pos(str) # the position you want go to
+                -"ground" default
+                -"sky" 
+        Returns: observation (object): the initial observation of the
+            space.
+        """
+        '''
+        使用三次空白控制帧以复位飞机控制器
+        '''
+        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+        # 飞机replay指令
+        self.fgcmd.replay(pos)
+        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+        # 等待4秒以提供flight gear运算
+        time.sleep(3)
+        self.fgcmd.auto_start()
+        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+
+        # 获取flight gear 初始状态
+        state_dict = self.fgudp.get_state()
+        self.initial_state_dict = state_dict
+        ob = self.state_dict2ob(state_dict)
+        return ob
+
     def render(self, mode='human'):
 
         """Renders the environment.
@@ -228,8 +258,13 @@ class fgenv:
     def state_dict2ob(self, state_dict):
 
         #增加数据的归一化过程 效果会更好
-        ob = np.array(list(state_dict.values()))
+        # ob = np.array(list(state_dict.values()))
+        ob = state_dict
         return ob
+
+    def ob2array(self, ob):
+        _ob = np.array(list(ob.values()))
+        return _ob
 
     def calreward(self, state_dict):
         '''
@@ -252,17 +287,17 @@ class fgenv:
         # crash
         if int(state_dict["crashed"])==1:
             over = True
-        # stable
-        if abs(state_dict["airspeed-kt"]) < 1.3:
-            count+=1
-        else:
-            count = 0
-        if(count >100):
-            over = True
+        # # stable
+        # if abs(state_dict["airspeed-kt"]) < 1.3:
+        #     count+=1
+        # else:
+        #     count = 0
+        # if(count >100):
+        #     over = True
 
         # out runway 21.325247
-        if abs(state_dict["latitude"]-21.325247) > 0.0004:
-            over = True
+        # if abs(state_dict["latitude"]-21.325247) > 0.0004:
+        #     over = True
 
         return over
     
