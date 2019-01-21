@@ -21,26 +21,38 @@ np.random.seed(2)
 tf.set_random_seed(2)  # reproducible
 
 
-class Actor(object):
-    def __init__(self, sess, n_features, n_actions, n_action_bounds, lr=0.0001):
 
+class Actor(object):
+    def __init__(self, sess, n_features, n_actions, action_bounds, lr=0.0001):
         self.sess = sess
+        self.action_bounds = (action_bounds[0],action_bounds[1])
+        self.action_dim = n_actions
+
         self.s = tf.placeholder(tf.float32, [1, n_features], "state")
-        self.a = tf.placeholder(tf.float32, None, name="act")
+        self.a = tf.placeholder(tf.float32, [n_actions], name="act")
         self.td_error = tf.placeholder(
             tf.float32, None, name="td_error")  # TD_error
 
         l1 = tf.layers.dense(
             inputs=self.s,
-            units=50,  # number of hidden units
+            units=100,  # number of hidden units
             activation=tf.nn.relu,
             kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
             bias_initializer=tf.constant_initializer(0.1),  # biases
             name='l1'
         )
 
-        mu = tf.layers.dense(
+        l2 = tf.layers.dense(
             inputs=l1,
+            units=40,  # number of hidden units
+            activation=tf.nn.relu,
+            kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
+            bias_initializer=tf.constant_initializer(0.1),  # biases
+            name='l2'
+        )
+
+        mu = tf.layers.dense(
+            inputs=l2,
             units=n_actions,  # output units
             activation=tf.nn.tanh,
             kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
@@ -49,7 +61,7 @@ class Actor(object):
         )
 
         sigma = tf.layers.dense(
-            inputs=l1,
+            inputs=l2,
             units=n_actions,  # output units
             activation=tf.nn.softplus,  # get action probabilities
             kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
@@ -58,11 +70,13 @@ class Actor(object):
         )
         global_step = tf.Variable(0, trainable=False)
         # self.e = epsilon = tf.train.exponential_decay(2., global_step, 1000, 0.9)
-        self.mu, self.sigma = tf.squeeze(mu*2), tf.squeeze(sigma+0.1)
+
+        self.mu, self.sigma = tf.squeeze(mu), tf.squeeze(sigma)
+
         self.normal_dist = tf.distributions.Normal(self.mu, self.sigma)
 
-        self.action = tf.clip_by_value(
-            self.normal_dist.sample(1), action_bound[0], action_bound[1])
+        self.action = tf.squeeze(tf.clip_by_value(
+            self.normal_dist.sample(1)*3e-1, self.action_bounds[0], self.action_bounds[1]))
 
         with tf.name_scope('exp_v'):
             log_prob = self.normal_dist.log_prob(
@@ -74,10 +88,11 @@ class Actor(object):
 
         with tf.name_scope('train'):
             self.train_op = tf.train.AdamOptimizer(
-                lr).minimize(-self.exp_v, global_step)    # min(v) = max(-v)
+                lr).minimize(-self.exp_v, global_step)  # max(v) = min(-v)
 
     def learn(self, s, a, td):
         s = s[np.newaxis, :]
+        # a = a[np.newaxis, :]
         feed_dict = {self.s: s, self.a: a, self.td_error: td}
         _, exp_v = self.sess.run([self.train_op, self.exp_v], feed_dict)
         return exp_v
@@ -85,11 +100,12 @@ class Actor(object):
     def choose_action(self, s):
         s = s[np.newaxis, :]
         # get probabilities for all actions
-        return self.sess.run(self.action, {self.s: s})
+        a = self.sess.run(self.action, {self.s: s})
+        return a
 
 
 class Critic(object):
-    def __init__(self, sess, n_features, lr=0.01,GAMMA = 0.9):
+    def __init__(self, sess, n_features, lr=0.01, GAMMA=0.9):
         self.gamma = GAMMA
         self.sess = sess
         with tf.name_scope('inputs'):
@@ -100,16 +116,25 @@ class Critic(object):
         with tf.variable_scope('Critic'):
             l1 = tf.layers.dense(
                 inputs=self.s,
-                units=30,  # number of hidden units
+                units=100,  # number of hidden units
                 activation=tf.nn.relu,
                 kernel_initializer=tf.random_normal_initializer(
                     0., .1),  # weights
                 bias_initializer=tf.constant_initializer(0.1),  # biases
                 name='l1'
             )
+            l2 = tf.layers.dense(
+                inputs=l1,
+                units=40,  # number of hidden units
+                activation=tf.nn.relu,
+                kernel_initializer=tf.random_normal_initializer(
+                    0., .1),  # weights
+                bias_initializer=tf.constant_initializer(0.1),  # biases
+                name='l2'
+            )
 
             self.v = tf.layers.dense(
-                inputs=l1,
+                inputs=l2,
                 units=1,  # output units
                 activation=None,
                 kernel_initializer=tf.random_normal_initializer(
@@ -158,7 +183,8 @@ if __name__ == "__main__":
 
     sess = tf.Session()
 
-    actor = Actor(sess, n_features=N_S, lr=LR_A, action_bound=[-A_BOUND, A_BOUND])
+    actor = Actor(sess, n_features=N_S,n_actions=1, lr=LR_A,
+                  action_bounds=[-A_BOUND, A_BOUND])
     critic = Critic(sess, n_features=N_S, lr=LR_C)
 
     sess.run(tf.global_variables_initializer())
@@ -174,14 +200,14 @@ if __name__ == "__main__":
             # if RENDER:
             env.render()
             a = actor.choose_action(s)
-
-            s_, r, done, info = env.step(a)
+            print(a)
+            s_, r, done, info = env.step([a])
             r /= 10
 
             # gradient = grad[r + gamma * V(s_) - V(s)]
             td_error = critic.learn(s, r, s_)
             # true_gradient = grad[logPi(s,a) * td_error]
-            actor.learn(s, a, td_error)
+            actor.learn(s, [a], td_error)
 
             s = s_
             t += 1

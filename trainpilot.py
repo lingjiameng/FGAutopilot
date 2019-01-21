@@ -1,12 +1,13 @@
 import time
 import pprint
 import numpy as np
-import DRLmodel.takeoff_dqn as tfdqn
+import DRL.takeoff_dqn as tfdqn
 import scaffold.pidpilot as PID
 import datetime
 import fgmodule.fgenv as fgenv
 import pandas as pd
 import os
+from scaffold.timer import gettime
 
 '''
 ##########controlframe############
@@ -25,21 +26,131 @@ actions_list = [
     # 'flaps',  # 襟翼 在飞机起降过程中增加升力，阻力 [0,1],实测影响不大，而且有速度限制
     #TODO: 方向舵调整片
 ]
+LLC_FEATURES = [
+    'pitch-deg',  # 飞机俯仰角
+    'roll-deg',  # 飞机滚转角
+    'heading-deg',  # 飞机朝向
+    'vsi-fpm',  # 爬升速度
+    'uBody-fps',  # 飞机沿机身X轴的速度
+    'vBody-fps',  # 飞机沿机身Y轴的速度
+    'wBody-fps',  # 飞机沿机身Z轴的速度
+    'x-accel-fps_sec',  # 飞机沿机身X轴的加速度
+    'y-accel-fps_sec',  # 飞机沿机身Y轴的加速度
+    'z-accel-fps_sec',  # 飞机沿机身z轴的加速度
+]
 
 
-def gettime():
-    """
-    return a time str for now
-    """
-    now = datetime.datetime.now()
-    date = "%s-%s-%s_%s-%s-%s" % (
-        now.year, now.month, now.day, now.hour, now.minute, now.second)
-    return date
+LLC_GOALS = {
+    'pitch-deg': 0.0,  # 飞机俯仰角
+    'roll-deg': 0.0,  # 飞机滚转角
+    'heading-deg': 90.0,  # 飞机朝向
+    'vsi-fpm': 0.0,  # 爬升速度
+    'uBody-fps': 120.0,  # 飞机沿机身X轴的速度
+    'vBody-fps': 0.0,  # 飞机沿机身Y轴的速度
+    'wBody-fps': 0.0,  # 飞机沿机身Z轴的速度
+    'x-accel-fps_sec': 5.0,  # 飞机沿机身X轴的加速度
+    'y-accel-fps_sec': 0.0,  # 飞机沿机身Y轴的加速度
+    'z-accel-fps_sec': 0.0,  # 飞机沿机身z轴的加速度
+}
+
+LLC_FEATURE_BOUNDS = {
+    'pitch-deg': [-90., 90.],  # 飞机俯仰角
+    'roll-deg': [-180., 180.],  # 飞机滚转角
+    'heading-deg': [0., 360.],  # 飞机朝向
+    'vsi-fpm': [0., 10.0],  # 爬升速度
+    'uBody-fps': [0., 600.],  # 飞机沿机身X轴的速度
+    'vBody-fps': [-200., 200.],  # 飞机沿机身Y轴的速度
+    'wBody-fps': [-200., 200.],  # 飞机沿机身Z轴的速度
+    'x-accel-fps_sec': [0., 50.],  # 飞机沿机身X轴的加速度
+    'y-accel-fps_sec': [-30., 30.],  # 飞机沿机身Y轴的加速度
+    'z-accel-fps_sec': [-300., 300.],  # 飞机沿机身z轴的加速度
+}
+
+LLC_ACTIONS = [
+    'aileron',  # 副翼 控制飞机翻滚 [-1,1]
+    'elevator',  # 升降舵 控制飞机爬升 [-1,1]
+    'rudder',  # 方向舵 控制飞机转弯（地面飞机方向控制） [-1,1]
+    'throttle0',  # 油门0 [0,1]
+    'throttle1'  # 油门1 [0,1]
+    # 'flaps',  # 襟翼 在飞机起降过程中增加升力，阻力 [0,1],实测影响不大，而且有速度限制
+    #TODO: 方向舵调整片
+]
+DATA_ACTIONS = [
+    'a_aileron',  # 副翼 控制飞机翻滚 [-1,1]
+    'a_elevator',  # 升降舵 控制飞机爬升 [-1,1]
+    'a_rudder',  # 方向舵 控制飞机转弯（地面飞机方向控制） [-1,1]
+    'a_throttle0',  # 油门0 [0,1]
+    'a_throttle1'  # 油门1 [0,1]
+]
+LLC_ACTION_BOUNDS = {
+    'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
+    'elevator': [-1, 1],  # 升降舵 控制飞机爬升 [-1,1] up/down
+    'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
+    'throttle0': [0, 1],  # 油门0
+    'throttle1': [0, 1],  # 油门1
+    # 'flaps': [0, 0]  # 襟翼 在飞机起降过程中增加升力，阻力  Key[ / ]	Extend / retract flaps
+    #TODO: 方向舵调整片
+}
+
+DATA_BOUNDS = {
+    'pitch-deg': [-90., 90.],  # 飞机俯仰角
+    'roll-deg': [-180., 180.],  # 飞机滚转角
+    'heading-deg': [0., 360.],  # 飞机朝向
+    'vsi-fpm': [0., 10.0],  # 爬升速度
+    'uBody-fps': [0., 600.],  # 飞机沿机身X轴的速度
+    'vBody-fps': [-200., 200.],  # 飞机沿机身Y轴的速度
+    'wBody-fps': [-200., 200.],  # 飞机沿机身Z轴的速度
+    'x-accel-fps_sec': [0., 50.],  # 飞机沿机身X轴的加速度
+    'y-accel-fps_sec': [-30., 30.],  # 飞机沿机身Y轴的加速度
+    'z-accel-fps_sec': [-300., 300.],  # 飞机沿机身z轴的加速度
+    'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
+    'elevator': [-1, 1],  # 升降舵 控制飞机爬升 [-1,1] up/down
+    'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
+    'throttle0': [0, 1],  # 油门0
+    'throttle1': [0, 1],  # 油门1
+    'flaps': [0, 1],  # 襟翼 在飞机起降过程中增加升力，阻力  Key[ / ]	Extend / retract flaps
+    #TODO: 方向舵调整片
+    'a_aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
+    'a_elevator': [-1, 1],  # 升降舵 控制飞机爬升 [-1,1] up/down
+    'a_rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
+    'a_throttle0': [0, 1],  # 油门0
+    'a_throttle1': [0, 1],  # 油门1
+}
+
+
+def fgstart(fg2client_addr=("127.0.0.1", 5700), client2fg_addr=("127.0.0.1", 5701), telnet_addr=("127.0.0.1", 5555)):
+    '''
+    简化FG通信启动过程
+    ---
+    Inputs:
+        - fg2client_addr
+        - client2fg_addr
+        - telnet_addr
+    Outputs:
+        - myfgenv:初始话完成的fgenv类
+
+    '''
+    myfgenv = fgenv.fgenv(telnet_addr, fg2client_addr, client2fg_addr)
+    # initial_state = myfgenv.initial()
+    myfgenv.initial()
+
+    return myfgenv
+
+
+MAX_EPISODE = 1000
+MAX_EP_STEPS = 200
+
+GAMMA = 0.9
+LR_A = 0.001    # learning rate for actor
+LR_C = 0.01     # learning rate for critic
+
 ##
 epoch = 10000
 step = 3000
 
 train_data_dir = "data/traindata/"
+
+
 
 ## pid control example
 def pid_datacol():
@@ -47,12 +158,7 @@ def pid_datacol():
     # input("press enter to continue!")
 
     ## 初始化flightgear 通信端口
-    fg2client_addr = ("127.0.0.1", 5700)
-    client2fg_addr = ("127.0.0.1", 5701)
-    telnet_addr = ("127.0.0.1", 5555)
-
-    myfgenv = fgenv.fgenv(telnet_addr, fg2client_addr, client2fg_addr)
-    initial_state =myfgenv.initial()
+    myfgenv = fgstart()
 
     train_data_file = train_data_dir+"traindata"+gettime()+".csv"
 
@@ -65,7 +171,7 @@ def pid_datacol():
 
         # 获取训练数据文件名和文件头
         train_data_file = train_data_dir+"traindata"+gettime()+".csv"
-        train_data_cols = list(state.keys()) + actions_list
+        train_data_cols = list(state.keys()) + actions_list + ["fly_mode"]
 
         # 生成文件头
         framebuffer = pd.DataFrame(data=None, columns=train_data_cols)
@@ -77,7 +183,7 @@ def pid_datacol():
 
             # just for test, so use not really ob
 
-            action = PID.pid(state)
+            action, fly_mode = PID.pid(state)
             action_frame = "%f,%f,%f,%f,%f\n" % action
             next_state , reward , done, _ = myfgenv.step(action_frame)
             
@@ -87,7 +193,8 @@ def pid_datacol():
             # 
             # state(dict)
 
-            framebuffer.loc[buffercount] = list(state.values())+list(action)
+            framebuffer.loc[buffercount] = list(
+                state.values())+list(action) + [fly_mode]
             if(buffercount % 100 == 0):
                 # print("save log to",self.logpath)
                 # print(framebuffer)
@@ -108,18 +215,10 @@ def train_dqn():
     print("client begin!")
     # input("press enter to continue!")
 
-    ## 初始化flightgear 通信端口
-    fg2client_addr = ("127.0.0.1", 5700)
-    client2fg_addr = ("127.0.0.1", 5701)
-    telnet_addr = ("127.0.0.1", 5555)
 
     # 初始化flightgear 环境
-    myfgenv = fgenv.fgenv(telnet_addr, fg2client_addr, client2fg_addr)
-    initial_state = myfgenv.initial()
+    myfgenv = fgstart()
 
-    #假设
-    print(initial_state)
-    print("state dim", myfgenv.state_dim)
     #初始化dqn模型
     mytfdqn = tfdqn.DQN(myfgenv.state_dim, 3)
 
@@ -160,20 +259,6 @@ def train_dqn():
         mytfdqn.save('modelckpt/model.ckpt')
         if i % 10 == 9:
             myfgenv.reset()
-
-def collect_data():
-    print("client begin!")
-    # input("press enter to continue!")
-
-    ## 初始化flightgear 通信端口
-    fg2client_addr = ("127.0.0.1", 5700)
-    client2fg_addr = ("127.0.0.1", 5701)
-    telnet_addr = ("127.0.0.1", 5555)
-
-    # 初始化flightgear 环境
-    myfgenv = fgenv.fgenv(telnet_addr, fg2client_addr, client2fg_addr)
-    myfgenv.initial()
-    input("enter to quit")
 
 
 

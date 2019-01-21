@@ -61,4 +61,10 @@
     df.fillna(value)
     ```
 
+ 6. 转置
+
+    ```python
+    df.T
+    ```
+
     

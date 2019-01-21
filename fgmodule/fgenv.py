@@ -275,8 +275,10 @@ class fgenv:
         reward = 0.0
         head_init = self.initial_state_dict['heading-deg']
         # head_init是每次初始化时飞机的heading-deg
-        reward = np.exp(-1 * (min(abs(state_dict['heading-deg'] - head_init), 360 - abs(
-            state_dict['heading-deg'] - head_init)))**2)
+        if state_dict["altitude"]<23 :
+            reward = np.exp(-1 * (min(abs(state_dict['heading-deg'] - head_init), 360 - abs(
+                state_dict['heading-deg'] - head_init)))**2)
+            reward -= 1.0
         return reward
 
     def judge_over(self, state_dict):
