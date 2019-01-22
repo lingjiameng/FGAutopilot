@@ -111,16 +111,17 @@ def pid(state, target_latitude=42, target_longitude=-122.4, target_altitude=7000
         fly_mode = "cruise" #巡航阶段
         # PID计算转弯控制
         # heading_error/360.0 [-0.5,0.5]
-        kp = 0.1 
-        turn = kp * heading_error/360.0
-        print(" turn :",turn)
-        if float(state["roll-deg"]) != 0:
-            aileron = -0.1 * float(state['roll-deg']) + turn
+        # kp = 0.1 
+        # turn = kp * heading_error/360.0
+        # print(" turn :",turn)
+        # if float(state["roll-deg"]) != 0:
+        #     aileron = -0.1 * float(state['roll-deg']) + turn
         if aileron > 1:
             aileron = 1
         if aileron < -1:
             aileron = -1
         target_pitch_degree = (target_altitude-float(state["altitude"]))*0.02
+        target_pitch_degree = 0.0
         elevator = -0.005*(target_pitch_degree-state['pitch-deg'])
 
         rudder = 0

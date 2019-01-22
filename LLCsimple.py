@@ -203,7 +203,7 @@ class LLC():
 
         self.ddpg.store_transition(ob, a, r, n_ob)
         if self.ddpg.pointer > self.ddpg.MEMORY_CAPACITY:
-                self.var *= .9995    # decay the action randomness
+                self.var *= .99995    # decay the action randomness
                 self.ddpg.learn()
 
 

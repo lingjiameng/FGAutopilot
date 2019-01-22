@@ -2,9 +2,11 @@
 
 ## environment
 
-- python3.7
-- pandas 
-- [geographiclib](https://geographiclib.sourceforge.io/html/python/index.html)
+- python 3.6.7
+- conda 4.5.12
+- pandas 0.23.4
+- tensorflow 1.12.0
+- [geographiclib](https://geographiclib.sourceforge.io/html/python/index.html) 1.49
 
 ## install
 
