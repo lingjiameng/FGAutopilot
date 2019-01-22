@@ -2,12 +2,15 @@ import time
 import pprint
 import numpy as np
 import DRL.takeoff_dqn as tfdqn
+import LLC 
+import scaffold.fgdata as dfer
 import scaffold.pidpilot as PID
 import datetime
 import fgmodule.fgenv as fgenv
 import pandas as pd
 import os
 from scaffold.timer import gettime
+import gym
 
 '''
 ##########controlframe############
@@ -145,8 +148,8 @@ LR_A = 0.001    # learning rate for actor
 LR_C = 0.01     # learning rate for critic
 
 ##
-epoch = 10000
-step = 3000
+epoch = 100
+step = 300
 
 train_data_dir = "data/traindata/"
 
@@ -261,7 +264,101 @@ def train_dqn():
             myfgenv.reset()
 
 
+'''
+def test_llc_by_gym():
+    env = gym.make(ENV_NAME)
+    env = env.unwrapped
+    env.seed(1)
 
+    s_dim = env.observation_space.shape[0]
+    a_dim = env.action_space.shape[0]
+    a_bound = env.action_space.high
+
+    ddpg = DDPG(a_dim, s_dim, a_bound)
+
+    myllc = LLC.LLC()
+
+    var = 3  # control exploration
+    t1 = time.time()
+    for i in range(MAX_EPISODES):
+        s = env.reset()
+        ep_reward = 0
+        for j in range(MAX_EP_STEPS):
+            if RENDER:
+                env.render()
+
+            # Add exploration noise
+            a = ddpg.choose_action(s)
+            a = np.clip(np.random.normal(a, var), -2, 2)    # add randomness to action selection for exploration
+            s_, r, done, info = env.step(a)
+
+            ddpg.store_transition(s, a, r / 10, s_)
+
+            if ddpg.pointer > ddpg.MEMORY_CAPACITY:
+                var *= .9995    # decay the action randomness
+                ddpg.learn()
+
+            s = s_
+            ep_reward += r
+            if j == MAX_EP_STEPS-1:
+                print('Episode:', i, ' Reward: %i' % int(ep_reward), 'Explore: %.2f' % var, )
+                # if ep_reward > -300:RENDER = True
+                break
+
+    print('Running time: ', time.time() - t1)
+'''
+
+def train_llc():
+
+    target_states = dfer.load_target_state("data/traindata")
+
+    myfgenv = fgstart()
+    
+    # bounds = {
+    #     'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
+    # }
+
+    myllc = LLC.LLC(LLC_FEATURE_BOUNDS,LLC_FEATURE_BOUNDS,LLC_ACTION_BOUNDS)
+
+    for e in range(epoch):
+        state = myfgenv.replay()
+        time.sleep(2)
+
+        goal_count = 0
+        goal = dfer.get_target_state(state, target_states)
+
+        ep_reward = 0
+
+        for s in range(step):
+
+            goal_count +=1
+
+            action,action_true = myllc.choose_action(state,goal)
+
+            action_frame = dfer.action2frame(action_true)
+            next_state, reward , done , info = myfgenv.step(action_frame) 
+            
+            r_ = LLC.llc_reward(state , goal, reward)
+
+            if goal_count%5 ==0:
+                next_goal = dfer.get_target_state(next_state, target_states)
+
+            myllc.learn(state, goal, r_, action,next_state , next_goal)
+            
+            state = next_state
+            goal = next_goal
+
+            ep_reward += r_
+            if done:
+                print('Episode:', e, ' Reward: %i' %
+                      int(ep_reward), 'Explore: %.2f' % myllc.var, )
+                break
+            
+            if s == step-1:
+                print('Episode:', e, ' Reward: %i' %
+                      int(ep_reward), 'Explore: %.2f' % myllc.var, )
+                # if ep_reward > -300:RENDER = True
+                break
 
 ########################################################
 ########### 自动飞行主程序 ###############################
@@ -271,4 +368,6 @@ if __name__ == "__main__":
 
     # train_dqn()
 
-    pid_datacol()
+    # pid_datacol()
+
+    train_llc()

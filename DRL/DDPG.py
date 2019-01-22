@@ -24,12 +24,7 @@ import time
 
 MAX_EPISODES = 200
 MAX_EP_STEPS = 200
-LR_A = 0.001    # learning rate for actor
-LR_C = 0.002    # learning rate for critic
-GAMMA = 0.9     # reward discount
-TAU = 0.01      # soft replacement
-MEMORY_CAPACITY = 10000
-BATCH_SIZE = 32
+
 
 RENDER = True
 ENV_NAME = 'Pendulum-v0'
@@ -40,10 +35,19 @@ ENV_NAME = 'Pendulum-v0'
 
 class DDPG(object):
     def __init__(self, a_dim, s_dim, a_bound,):
-        self.memory = np.zeros((MEMORY_CAPACITY, s_dim * 2 + a_dim + 1), dtype=np.float32)
-        self.pointer = 0
-        self.sess = tf.Session()
+        self.MEMORY_CAPACITY = 10000
+        self.TAU = 0.01      # soft replacement
+        self.GAMMA = 0.9     # reward discount
+        self.BATCH_SIZE = 32
+        self.LR_A = 0.001    # learning rate for actor
+        self.LR_C = 0.002    # learning rate for critic
 
+        self.memory = np.zeros((self.MEMORY_CAPACITY, s_dim * 2 + a_dim + 1), dtype=np.float32)
+        self.pointer = 0
+
+        
+        self.sess = tf.Session()
+        
         self.a_dim, self.s_dim, self.a_bound = a_dim, s_dim, a_bound,
         self.S = tf.placeholder(tf.float32, [None, s_dim], 's')
         self.S_ = tf.placeholder(tf.float32, [None, s_dim], 's_')
@@ -53,7 +57,7 @@ class DDPG(object):
         q = self._build_c(self.S, self.a, )
         a_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Actor')
         c_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Critic')
-        ema = tf.train.ExponentialMovingAverage(decay=1 - TAU)          # soft replacement
+        ema = tf.train.ExponentialMovingAverage(decay=1 - self.TAU)          # soft replacement
 
         def ema_getter(getter, name, *args, **kwargs):
             return ema.average(getter(name, *args, **kwargs))
@@ -63,20 +67,21 @@ class DDPG(object):
         q_ = self._build_c(self.S_, a_, reuse=True, custom_getter=ema_getter)
 
         a_loss = - tf.reduce_mean(q)  # maximize the q
-        self.atrain = tf.train.AdamOptimizer(LR_A).minimize(a_loss, var_list=a_params)
+        self.atrain = tf.train.AdamOptimizer(self.LR_A).minimize(a_loss, var_list=a_params)
 
         with tf.control_dependencies(target_update):    # soft replacement happened at here
-            q_target = self.R + GAMMA * q_
+            q_target = self.R + self.GAMMA * q_
             td_error = tf.losses.mean_squared_error(labels=q_target, predictions=q)
-            self.ctrain = tf.train.AdamOptimizer(LR_C).minimize(td_error, var_list=c_params)
+            self.ctrain = tf.train.AdamOptimizer(self.LR_C).minimize(td_error, var_list=c_params)
 
+        self.saver = tf.train.Saver()
         self.sess.run(tf.global_variables_initializer())
 
     def choose_action(self, s):
         return self.sess.run(self.a, {self.S: s[np.newaxis, :]})[0]
 
     def learn(self):
-        indices = np.random.choice(MEMORY_CAPACITY, size=BATCH_SIZE)
+        indices = np.random.choice(self.MEMORY_CAPACITY, size=self.BATCH_SIZE)
         bt = self.memory[indices, :]
         bs = bt[:, :self.s_dim]
         ba = bt[:, self.s_dim: self.s_dim + self.a_dim]
@@ -88,7 +93,7 @@ class DDPG(object):
 
     def store_transition(self, s, a, r, s_):
         transition = np.hstack((s, a, [r], s_))
-        index = self.pointer % MEMORY_CAPACITY  # replace the old memory with new memory
+        index = self.pointer % self.MEMORY_CAPACITY  # replace the old memory with new memory
         self.memory[index, :] = transition
         self.pointer += 1
 
@@ -138,7 +143,7 @@ if __name__ == "__main__":
 
             ddpg.store_transition(s, a, r / 10, s_)
 
-            if ddpg.pointer > MEMORY_CAPACITY:
+            if ddpg.pointer > ddpg.MEMORY_CAPACITY:
                 var *= .9995    # decay the action randomness
                 ddpg.learn()
 
