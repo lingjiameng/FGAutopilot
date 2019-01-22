@@ -198,19 +198,29 @@ class FG_CMD:
         self.print_local_time()
         return None
     
-    def replay(self, pos = "ground"):
+    def replay(self, pos = "ground", path = None, time=-1):
         '''
         input:
             pos(str)
                 -"ground" 复位至地面
-                -"sky" 复位至天空 TODO:
+                -"sky" 复位至天空
+            path(str)
+                -tape的路径 如 E:\tape
         reposition the plane in intial state
         using fg replay command. it's efficiency
         '''
+        if path != None:
+            # 指定tape的路径
+            self.__setitem__("/sim/replay/tape-directory", path)
+        if time == -1:
+            time = 120
 
         self.telnet._putcmd("run replay")
+        self.__setitem__("/sim/replay/time", time)
+        # input()
         self.telnet._putcmd("set /sim/freeze/replay-state 3")
-        self.telnet._putcmd("set /sim/replay/disable true")
+        self.telnet._putcmd("set /sim/replay/disable true")   # 开始手动控制
+        
         self.__setitem__("/sim/model/autostart", 1)
         self.__setitem__("/controls/gear/brake-parking", 0)
         print("replay to",pos, "完成!", end='time:')

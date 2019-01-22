@@ -156,7 +156,7 @@ class LLC():
         g_ = dfer.filter_state(goal, bounds=self.goals, objtype="array")
 
         # 输入合并 state 和 goal
-        ob =np.append(s_[:3], s_[3:] - g_)
+        ob =np.append(s_[:2], s_[2:] - g_)
 
         action = self.ddpg.choose_action(ob)
         # add randomness to action selection for exploration
@@ -189,7 +189,7 @@ class LLC():
         g_ = dfer.filter_state(goal, bounds=self.goals, objtype="array")
 
         # 输入合并 state 和 goal
-        ob = np.append(s_[:3], s_[3:] - g_)
+        ob = np.append(s_[:2], s_[2:] - g_)
 
         r = reward
         a = action
@@ -199,7 +199,7 @@ class LLC():
         n_g_ = dfer.filter_state(
             next_goal, bounds=self.goals, objtype="array")
 
-        n_ob =np.append(n_s_[:3] ,n_s_[3:] - n_g_)
+        n_ob =np.append(n_s_[:2] ,n_s_[2:] - n_g_)
 
         self.ddpg.store_transition(ob, a, r, n_ob)
         if self.ddpg.pointer > self.ddpg.MEMORY_CAPACITY:

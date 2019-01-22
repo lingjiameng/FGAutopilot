@@ -176,11 +176,11 @@ class fgenv:
         self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
         # 飞机replay指令
         self.fgcmd.replay(pos)
-        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+        # self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
         # 等待4秒以提供flight gear运算
         time.sleep(3)
         self.fgcmd.auto_start()
-        self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
+        # self.fgudp.send_controlframe("0.0,0.0,0.0,0.0,0.0\n")
 
         # 获取flight gear 初始状态
         state_dict = self.fgudp.get_state()
