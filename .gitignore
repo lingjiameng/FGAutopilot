@@ -110,4 +110,3 @@ data/traindata/*
 #tmp data and ckpt
 data/*
 modelckpt/tmp/
-Doc/Dev/
