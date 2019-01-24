@@ -1,11 +1,10 @@
 
-from stable_baselines import A2C
 import DRL.ActorCritic as AC
 import fgmodule.fgenv as fgenv
 
 import tensorflow as tf
 import numpy as np
-import gym
+import gym.spaces as gymspaces
 
 LLC_FEATURES = [
     'pitch-deg',  # 飞机俯仰角
@@ -170,7 +169,7 @@ class llcenv:
         self.goal = goals
         self.fgenv = fgenv
         self.action_lowers,self.action_uppers = get_lower_upper_bound(self.action_bounds)
-        self.action_space = gym.spaces.Box(low =self.action_lowers , high=self.action_uppers)
+        self.action_space = gymspaces.Box(low =self.action_lowers , high=self.action_uppers)
 
     def step(self, action = np.array()):
         '''

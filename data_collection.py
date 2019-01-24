@@ -1,12 +1,11 @@
 import time
-import pprint
 import numpy as np
-import DRL.takeoff_dqn as tfdqn
 import scaffold.pidpilot as PID
-import datetime
+
 import fgmodule.fgenv as fgenv
 import pandas as pd
-import os
+
+from scaffold.utils import gettime
 
 
 actions_list = [
@@ -19,22 +18,77 @@ actions_list = [
     #TODO: 方向舵调整片
 ]
 
-
-def gettime():
-    """
-    return a time str for now
-    """
-    now = datetime.datetime.now()
-    date = "%s-%s-%s_%s-%s-%s" % (
-        now.year, now.month, now.day, now.hour, now.minute, now.second)
-    return date
-
-
 ##
 epoch = 10000
 step = 3000
 
 train_data_dir = "data/traindata/"
+
+
+## pid control example
+def pid_datacol():
+    print("client begin!")
+    # input("press enter to continue!")
+
+    ## 初始化flightgear 通信端口
+    myfgenv = fgenv.fgstart()
+
+    train_data_file = train_data_dir+"traindata"+gettime()+".csv"
+
+    ## 开始自动飞行
+    for i in range(epoch):
+        # print(myfg.inframe)
+        # print(myfg.get_state()[0]['frame'])
+        state = myfgenv.replay()
+        time.sleep(2)
+
+        # 获取训练数据文件名和文件头
+        train_data_file = train_data_dir+"traindata"+gettime()+".csv"
+        train_data_cols = list(state.keys()) + actions_list + ["fly_mode"]
+
+        # 生成文件头
+        framebuffer = pd.DataFrame(data=None, columns=train_data_cols)
+        framebuffer.to_csv(train_data_file, mode='a',
+                           index=False, header=True)
+        buffercount = 0
+
+        for s in range(10*step):
+
+            # just for test, so use not really ob
+            fly_mode = int(state["altitude"] > 23) + \
+                int(state["altitude"] > 6000)
+
+            action= PID.pid(state)
+            action_frame = "%f,%f,%f,%f,%f\n" % action
+            next_state, reward, done, _ = myfgenv.step(action_frame)
+
+            #####
+            # 存储内容
+            # state, action, reward(暂时不需要保存), done(包含在state的crashed中)
+            #
+            # state(dict)
+
+            framebuffer.loc[buffercount] = list(
+                state.values())+list(action) + [fly_mode]
+            if(buffercount % 100 == 0):
+                # print("save log to",self.logpath)
+                # print(framebuffer)
+                framebuffer.to_csv(train_data_file, mode='a',
+                                   index=False, header=False)
+                framebuffer = pd.DataFrame(
+                    data=None, columns=train_data_cols)
+                buffercount = 0
+            buffercount += 1
+
+            if done:
+                break
+            state = next_state
+            ##限制收发频率
+            time.sleep(0.1)
+
+
+
+
 
 # TODO: 手动飞行数据收集函数
 def datacol():
@@ -71,8 +125,9 @@ def datacol():
         for s in range(10*step):
 
             # just for test, so use not really ob
-
-            action, fly_mode = PID.pid(state)
+            fly_mode = int(state["altitude"] > 23) + \
+                int(state["altitude"] > 6000)
+            action = PID.pid(state)
             action_frame = "%f,%f,%f,%f,%f\n" % action
             next_state, reward, done, _ = myfgenv.step(action_frame)
 

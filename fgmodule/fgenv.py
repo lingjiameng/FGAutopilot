@@ -3,6 +3,24 @@ from fgmodule.fgudp import fgudp
 import time
 import numpy as np
 
+def fgstart(fg2client_addr=("127.0.0.1", 5700), client2fg_addr=("127.0.0.1", 5701), telnet_addr=("127.0.0.1", 5555)):
+    '''
+    简化FG通信启动过程
+    ---
+    Inputs:
+        - fg2client_addr
+        - client2fg_addr
+        - telnet_addr
+    Outputs:
+        - myfgenv:初始话完成的fgenv类
+
+    '''
+    myfgenv = fgenv(telnet_addr, fg2client_addr, client2fg_addr)
+    # initial_state = myfgenv.initial()
+    myfgenv.initial()
+
+    return myfgenv
+
 class fgenv:
     '''
     python enviorment for flightgear

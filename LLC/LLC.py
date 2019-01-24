@@ -4,9 +4,7 @@ import scaffold.pidpilot as PID
 import scaffold.fgdata as dfer
 import time
 import numpy as np
-import os
 import tensorflow as tf
-import pandas as pd
 
 LLC_FEATURE_BOUNDS = {
     'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
