@@ -110,3 +110,4 @@ data/traindata/*
 #tmp data and ckpt
 data/*
 modelckpt/*
+Doc/
