@@ -1,7 +1,6 @@
 from fgmodule.fgcmd import FG_CMD
 from fgmodule.fgudp import fgudp
 import time
-import gym
 import numpy as np
 
 class fgenv:

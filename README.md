@@ -5,6 +5,7 @@
 - python 3.6.7
 - conda 4.5.12
 - pandas 0.23.4
+- numpy 1.14.2
 - tensorflow 1.12.0
 - [geographiclib](https://geographiclib.sourceforge.io/html/python/index.html) 1.49
 
@@ -12,7 +13,7 @@
 
 1. Install FlightGear in your computer
 
-2. put `udp_input.xml`, `udp_output.xml` into folder `FG_ROOT/data/Protocol`
+2. put `config/fgudp.xml`into folder `FG_ROOT/data/Protocol`
 
 3. start flight gear and  add below command line option into flightgear setting page
 
@@ -20,8 +21,8 @@
     --allow-nasal-from-sockets
     --telnet=5555
     --httpd=5500
-    --generic=socket,in,10,127.0.0.1,5701,udp,udp_input
-    --generic=socket,out,10,127.0.0.1,5700,udp,udp_output
+    --generic=socket,in,10,127.0.0.1,5701,udp,fgudp
+    --generic=socket,out,10,127.0.0.1,5700,udp,fgudp
     ```
 
 4. just type `python trainpilot.py`!! 
