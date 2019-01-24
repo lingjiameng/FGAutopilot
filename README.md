@@ -52,7 +52,7 @@
 - `data` we will save all the fly log in folder `data/flylog`. their named by the time when the log created.
 - code stucture  **`fgudp.py`已实现飞行日志保存** 
 
-![struct](doc/struct_v0.1.4.jpg)
+![struct](Doc/struct.jpg)
 
 ## sys
 
