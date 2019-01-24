@@ -1,8 +1,8 @@
 import time
-import pprint
 import numpy as np
 import DRL.DQN as tfdqn
 import LLC.LLCsimple as LLCsimple
+import LLC.LLC as LLC
 import scaffold.fgdata as dfer
 import scaffold.pidpilot as PID
 import fgmodule.fgenv as fgenv
