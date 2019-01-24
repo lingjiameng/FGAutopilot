@@ -1,4 +1,3 @@
-import gym
 import tensorflow as tf
 import numpy as np
 import random
@@ -130,6 +129,7 @@ class DQN():
         })[0])
 
 def main():
+    import gym
     #initialize OPenAI Gym env and dqn agent
     env = gym.make(ENV_NAME)
     
@@ -167,6 +167,11 @@ def main():
             print('episode: ', episode, 'Evaluation Average Reward:', ave_reward)
             if ave_reward >= 200:
                 break
+
+
+
+
+
 
 if __name__ == '__main__':
   main()

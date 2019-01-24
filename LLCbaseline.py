@@ -1,6 +1,6 @@
 
 from stable_baselines import A2C
-import DRLmodel.ActorCritic as AC
+import DRL.ActorCritic as AC
 import fgmodule.fgenv as fgenv
 
 import tensorflow as tf

@@ -1,16 +1,13 @@
 import time
 import pprint
 import numpy as np
-import DRL.takeoff_dqn as tfdqn
+import DRL.DQN as tfdqn
 import LLC 
 import scaffold.fgdata as dfer
 import scaffold.pidpilot as PID
-import datetime
 import fgmodule.fgenv as fgenv
 import pandas as pd
-import os
-from scaffold.timer import gettime
-import gym
+from scaffold.utils import gettime
 
 '''
 ##########controlframe############
@@ -225,7 +222,6 @@ def train_dqn():
     #初始化dqn模型
     mytfdqn = tfdqn.DQN(myfgenv.state_dim, 3)
 
-    # if os.path.exists('modelckpt/model.ckpt'):
     print("----------load model------------")
     mytfdqn.load('modelckpt/model.ckpt')
     ## 开始自动飞行
@@ -371,3 +367,4 @@ if __name__ == "__main__":
     # pid_datacol()
 
     train_llc()
+
