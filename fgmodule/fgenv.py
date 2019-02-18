@@ -61,12 +61,15 @@ class fgenv:
         self.state_dim = self.state_space
         return self.initial_state
 
-    def step(self,action):
+    def step(self,action,delay = 0.1):
         """
             Parameters
             ----------
             action(str) :
                 控制帧
+
+            delay(double) : 
+                delay定义多少延时之后返回状态帧
 
             Returns
             -------
@@ -99,7 +102,7 @@ class fgenv:
         # 估计以后要修改为多种形式
         # dqn 为离散型的值，然后对应五个控制量，需要转换 并且格式化为control frame
         # ppo2 为连续的值，可能只需要格式化
-        state_dict = self.fgudp.send_controlframe(action)
+        state_dict = self.fgudp.send_controlframe(action,delay)
         
         # TODO: 增加数据的归一化过程 效果会更好
         ob = self.state_dict2ob(state_dict)

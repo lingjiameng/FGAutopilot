@@ -2,7 +2,6 @@ import socket
 import threading
 import time
 import datetime
-import random
 import os
 import pandas as pd
 from queue import Queue
@@ -196,9 +195,11 @@ class fgudp:
     def get_state(self):
         return copy.deepcopy(self.inframe)
 
-    def send_controlframe(self,control_frame):
+    def send_controlframe(self, control_frame, delay = 0.0):
         #发送控制帧
         self.my_out_frames.put(control_frame)
+        if delay:
+            time.sleep(delay)
         #返回当前状态
         return copy.deepcopy(self.inframe)
     

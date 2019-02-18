@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
 # flightgear 通信脚本 发送命令
 from telnetlib import Telnet
-import sys
 import socket
 import re
 import time

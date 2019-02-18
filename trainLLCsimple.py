@@ -27,8 +27,9 @@ LLC_GOAL_BOUNDS = {
 goals = {
     'pitch-deg': 0.,  # 飞机俯仰角
     'roll-deg': 0.,  # 飞机滚转角
-    'heading-deg': 90.,  # 飞机朝向
-}
+    'heading-deg': 85.,  # 飞机朝向
+    }
+
 
 LLC_ACTION_BOUNDS = {
     'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
@@ -119,47 +120,136 @@ importlib.reload(LLCsimple)
 
 
 #%%
+# 延时问题
+# 模型输入输出的结构
+# 训练trick
+rewards = []
+
 for e in range(epoch):
-       state = myfgenv.replay("sky")
-       time.sleep(2)
+        state = myfgenv.replay("sky")
+        time.sleep(2)
+        
+        goal = goals.copy()
+        
+        # goal_noise = np.random.randint(-30, 30)
+        # goal['heading-deg'] = goal['heading-deg']+ goal_noise
+        # intial_goal_diff = abs(goal['heading-deg']-state['heading-deg'])
 
-       next_goal = goal
+        ep_reward = 0
+        ep_diff = 0.0
 
-       ep_reward = 0
 
-       for s in range(step):
+        for s in range(step):
        
            
-           old_action = action 
-           action,action_true = myllc.choose_action(state,goal)
-           
-           elevator = -0.01*(0.0-state['pitch-deg'])
+            old_action = action 
+            action,action_true = myllc.choose_action(state,goal)
+            
+            elevator = -0.01*(0.0-state['pitch-deg'])
+            diff = state['heading-deg']-goal['heading-deg']
+            aileron = -0.1 * (float(state['roll-deg'])+diff)
 
-           action_frame = dfer.action2frame((action_true[0],elevator,action_true[1],0.6,0.6))
-           
-           next_state, reward , done , info = myfgenv.step(action_frame) 
-           
-           r_ = LLCsimple.llc_reward(state , goal,old_action,action ,reward)
-           
-           next_goal = goals
-           myllc.learn(state, goal, r_, action,next_state , next_goal)
-           
-           state = next_state
-           goal = next_goal
+            action_frame = dfer.action2frame((action_true[0],elevator,action_true[1],0.6,0.6))
+            
+            next_state, reward , done , info = myfgenv.step(action_frame) 
+            
+            r_ = LLCsimple.llc_reward(state , goal,old_action,action ,reward)
+            
+            next_goal = goal
 
-           ep_reward += r_
-           if done:
-               print('Episode:', e, ' Reward: %i' %
-                     int(ep_reward), 'Explore: %.2f' % myllc.var, )
-               break
-           
-           if s == step-1:
-               print('Episode:', e, ' Reward: %i' %
-                     int(ep_reward), 'Explore: %.2f' % myllc.var, )
-               # if ep_reward > -300:RENDER = True
-               break
-           time.sleep(0.1)
+            myllc.learn(state, goal, r_, action,next_state , next_goal)
+            
+
+            state = next_state
+            goal = next_goal
+            ep_diff += state['heading-deg'] - goal['heading-deg']
+            ep_reward += r_
+            if done:
+                if s==0:
+                    break
+                print('Episode:', e, ' Reward: %i' %
+                        (int(ep_reward)/s),'diff: %.4f'% (ep_diff/s) ,'Explore: %.2f' % myllc.var, )
+
+                rewards.append(ep_reward/s)
+                break
+            
+            if s == step-1:
+                print('Episode:', e, ' Reward: %i' %
+                      (int(ep_reward)/s), 'diff: %.4f' % (ep_diff/s), 'Explore: %.2f' % myllc.var, )
+                # if ep_reward > -300:RENDER = True
+                rewards.append(ep_reward/s)
+                break
 
 
 #%%
-myllc.save("modelckpt/LLCsimple_DDPG/LLCsimple_DDPG.ckpt")
+#################################
+###########PID
+# 延时问题
+# 模型输入输出的结构
+# 训练trick
+rewards = []
+
+for e in range(epoch):
+        state = myfgenv.replay("sky")
+        time.sleep(2)
+
+        goal = goals.copy()
+
+        # goal_noise = np.random.randint(-30, 30)
+        # goal['heading-deg'] = goal['heading-deg']+ goal_noise
+        # intial_goal_diff = abs(goal['heading-deg']-state['heading-deg'])
+
+        ep_reward = 0
+        ep_diff = 0.0
+
+        for s in range(step):
+
+            old_action = action
+
+            elevator = -0.01*(0.0-state['pitch-deg'])
+            diff = state['heading-deg']-goal['heading-deg']
+            aileron = -0.1 * (float(state['roll-deg'])*0.15+0.3*diff)
+            action = np.array([aileron ,0.0 ])
+
+            action_frame = dfer.action2frame(
+                (aileron, elevator, 0.0, 0.6, 0.6))
+
+            next_state, reward, done, info = myfgenv.step(action_frame)
+
+            r_ = LLCsimple.llc_reward(state, goal, old_action, action, reward)
+
+            next_goal = goal
+
+            state = next_state
+            goal = next_goal
+            ep_diff += state['heading-deg'] - goal['heading-deg']
+            ep_reward += r_
+            if done:
+                if s == 0:
+                    break
+                print('Episode:', e, ' Reward: %i' %
+                      (int(ep_reward)/s), 'diff: %.4f' % (ep_diff/s), 'Explore: %.2f' % myllc.var, )
+
+                rewards.append(ep_reward/s)
+                break
+
+            if s == step-1:
+                print('Episode:', e, ' Reward: %i' %
+                      (int(ep_reward)/s), 'diff: %.4f' % (ep_diff/s), 'Explore: %.2f' % myllc.var, )
+                # if ep_reward > -300:RENDER = True
+                rewards.append(ep_reward/s)
+                break
+
+
+#%%
+myllc.save("modelckpt/LLCsimple_DDPG2_delay/LLCsimple_DDPG.ckpt")
+
+
+#%%
+print(rewards)
+
+#%%
+import matplotlib.pyplot as plt
+plt.plot(rewards)
+plt.savefig("rewards.png")
+plt.show()
