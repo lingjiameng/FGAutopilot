@@ -10,52 +10,25 @@ import fgmodule.fgenv as fgenv
 import scaffold.fgdata as dfer
 import scaffold.pidpilot as PID
 from scaffold.utils import gettime
-
-#%%
-LLC_FEATURE_BOUNDS = {
-    'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
-    'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
-    'pitch-deg': [-90., 90.],  # 飞机俯仰角
-    'roll-deg': [-180., 180.],  # 飞机滚转角
-    'heading-deg': [0., 360.],  # 飞机朝向
-}
-LLC_GOAL_BOUNDS = {
-    'pitch-deg': [-90., 90.],  # 飞机俯仰角
-    'roll-deg': [-180., 180.],  # 飞机滚转角
-    'heading-deg': [0., 360.],  # 飞机朝向
-}
-goals = {
-    'pitch-deg': 0.,  # 飞机俯仰角
-    'roll-deg': 0.,  # 飞机滚转角
-    'heading-deg': 85.,  # 飞机朝向
-    }
-
-
-LLC_ACTION_BOUNDS = {
-    'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
-    'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
-}
-
 ##
 epoch = 1000
 step = 220
 
+goals = {
+    'pitch-deg': 0.,  # 飞机俯仰角
+    'roll-deg': 0.,  # 飞机滚转角
+    'heading-deg': 90.,  # 飞机朝向
+}
 
 #%%
 myfgenv = fgenv.fgstart()
 
-# bounds = {
-#     'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
-# }
-
-
 #%%
-myllc = LLCsimple.LLC(LLC_FEATURE_BOUNDS,LLC_GOAL_BOUNDS,LLC_ACTION_BOUNDS)
+myllc = LLCsimple.LLC()
 
 
 #%%
 state = myfgenv.replay("sky")
-
 
 #%%
 state = {'aileron': 0.0,
@@ -90,23 +63,11 @@ state = {'aileron': 0.0,
  'longitude': -157.943137,
  'altitude': 21.358186,
  'crashed': 0.0}
-
-
-#%%
-goal = goals
-
-
-#%%
-myllc.goals
-
-#%%
-state
-
-#%%
 action = np.array([0., 0.])
 old_action = np.array([0., 0.])
 
 #%%
+goal = goals
 action ,_ = myllc.choose_action(state,goal)
 print(LLCsimple.llc_reward(state , goal, old_action, action, 0))
 print(action)

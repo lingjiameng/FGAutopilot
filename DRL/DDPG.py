@@ -34,13 +34,13 @@ ENV_NAME = 'Pendulum-v0'
 
 
 class DDPG(object):
-    def __init__(self, a_dim, s_dim, a_bound,):
-        self.MEMORY_CAPACITY = 50000
+    def __init__(self, a_dim, s_dim, a_bound, MEMORY_CAPACITY=50000,LR_A=0.0001,LR_C=0.00001):
+        self.MEMORY_CAPACITY = MEMORY_CAPACITY
         self.TAU = 0.01      # soft replacement
         self.GAMMA = 0.9     # reward discount
         self.BATCH_SIZE = 64
-        self.LR_A = 0.0001    # learning rate for actor
-        self.LR_C = 0.00001    # learning rate for critic
+        self.LR_A = LR_A    # learning rate for actor
+        self.LR_C = LR_C    # learning rate for critic
 
         self.memory = np.zeros((self.MEMORY_CAPACITY, s_dim * 2 + a_dim + 1), dtype=np.float32)
         self.pointer = 0
@@ -72,7 +72,8 @@ class DDPG(object):
         with tf.control_dependencies(target_update):    # soft replacement happened at here
             q_target = self.R + self.GAMMA * q_
             td_error = tf.losses.mean_squared_error(labels=q_target, predictions=q)
-            self.ctrain = tf.train.AdamOptimizer(self.LR_C).minimize(td_error, var_list=c_params)
+            # tf.train.AdamOptimizer(self.LR_C).minimize(td_error, var_list=c_params)
+            self.ctrain = self._opt_c(td_error, c_params, q_target, q)
 
         self.saver = tf.train.Saver()
         self.sess.run(tf.global_variables_initializer())
@@ -89,7 +90,8 @@ class DDPG(object):
         bs_ = bt[:, -self.s_dim:]
 
         self.sess.run(self.atrain, {self.S: bs})
-        self.sess.run(self.ctrain, {self.S: bs, self.a: ba, self.R: br, self.S_: bs_})
+        td_error = self.sess.run(self.ctrain, {self.S: bs, self.a: ba, self.R: br, self.S_: bs_})
+        print(td_error)
 
     def store_transition(self, s, a, r, s_):
         transition = np.hstack((s, a, [r], s_))
@@ -119,6 +121,9 @@ class DDPG(object):
             net1 = tf.layers.dense(net0,50,activation = tf.nn.tanh,name ="net2",trainable=trainable)
             return tf.layers.dense(net1, 1, trainable=trainable)  # Q(s,a)
 
+    def _opt_c(self, td_error, c_params, q_target, q):
+        tf.train.AdamOptimizer(self.LR_C).minimize(td_error, var_list=c_params)
+        return tf.squeeze(q_target - q)
 
 ###############################  training  ####################################
 if __name__ == "__main__":
@@ -130,7 +135,7 @@ if __name__ == "__main__":
     a_dim = env.action_space.shape[0]
     a_bound = env.action_space.high
 
-    ddpg = DDPG(a_dim, s_dim, a_bound)
+    ddpg = DDPG(a_dim, s_dim, a_bound,10000,0.01,0.001)
 
     var = 3  # control exploration
     t1 = time.time()
@@ -151,6 +156,7 @@ if __name__ == "__main__":
             if ddpg.pointer > ddpg.MEMORY_CAPACITY:
                 var *= .9995    # decay the action randomness
                 ddpg.learn()
+                # print(ddpg.td_error.eval(session=ddpg.sess))
 
             s = s_
             ep_reward += r
