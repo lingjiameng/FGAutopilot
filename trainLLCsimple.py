@@ -12,7 +12,7 @@ import scaffold.pidpilot as PID
 from scaffold.utils import gettime
 ##
 epoch = 1000
-step = 220
+step = 100
 
 goals = {
     'pitch-deg': 0.,  # 飞机俯仰角
@@ -25,6 +25,7 @@ myfgenv = fgenv.fgstart()
 
 #%%
 myllc = LLCsimple.LLC()
+myllc.load("modelckpt/LLCsimple_DDPG2_delay/LLCsimple_DDPG.ckpt")
 
 
 #%%
@@ -76,8 +77,8 @@ old_action = action
 
 
 #%%
-import importlib
-importlib.reload(LLCsimple)
+# import importlib
+# importlib.reload(LLCsimple)
 
 
 #%%
@@ -112,7 +113,7 @@ for e in range(epoch):
 
             action_frame = dfer.action2frame((action_true[0],elevator,action_true[1],0.6,0.6))
             
-            next_state, reward , done , info = myfgenv.step(action_frame) 
+            next_state, reward , done , info = myfgenv.step(action_frame,delay=2) 
             
             r_ = LLCsimple.llc_reward(state , goal,old_action,action ,reward)
             
@@ -142,15 +143,17 @@ for e in range(epoch):
                 break
 
 
-#%%
-#################################
-###########PID
-# 延时问题
-# 模型输入输出的结构
-# 训练trick
-rewards = []
+def pid():
 
-for e in range(epoch):
+    #%%
+        #################################
+        ###########PID
+        # 延时问题
+        # 模型输入输出的结构
+        # 训练trick
+    pidrewards = []
+
+    for e in range(epoch):
         state = myfgenv.replay("sky")
         time.sleep(2)
 
@@ -170,7 +173,7 @@ for e in range(epoch):
             elevator = -0.01*(0.0-state['pitch-deg'])
             diff = state['heading-deg']-goal['heading-deg']
             aileron = -0.1 * (float(state['roll-deg'])*0.15+0.3*diff)
-            action = np.array([aileron ,0.0 ])
+            action = np.array([aileron, 0.0])
 
             action_frame = dfer.action2frame(
                 (aileron, elevator, 0.0, 0.6, 0.6))

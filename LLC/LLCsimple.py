@@ -11,7 +11,10 @@ import pandas as pd
 LLC_FEATURE_BOUNDS = {
     'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
     'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
-    'throttle': [0, 1],  # 油门0
+    # 'throttle': [0, 1],  # 油门0
+    # 'uBody-fps': [0., 600.],  # 飞机沿机身X轴的速度
+    # 'vBody-fps': [-200., 200.],  # 飞机沿机身Y轴的速度
+    # 'wBody-fps': [-200., 200.],  # 飞机沿机身Z轴的速度
     'pitch-deg': [-90., 90.],  # 飞机俯仰角
     'roll-deg': [-180., 180.],  # 飞机滚转角
     'heading-deg': [0., 360.],  # 飞机朝向
@@ -21,16 +24,11 @@ LLC_GOAL_BOUNDS = {
     'roll-deg': [-180., 180.],  # 飞机滚转角
     'heading-deg': [0., 360.],  # 飞机朝向
 }
-goals = {
-    'pitch-deg': 0.,  # 飞机俯仰角
-    'roll-deg': 0.,  # 飞机滚转角
-    'heading-deg': 90.,  # 飞机朝向
-}
 
 LLC_ACTION_BOUNDS = {
     'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
     'rudder': [-1, 1],  # 方向舵 控制飞机转弯（地面飞机方向控制） 0 /enter
-    'throttle': [0, 1],  # 油门0
+    # 'throttle': [0, 1],  # 油门0
 }
 
 DATA_BOUNDS = {
@@ -95,7 +93,7 @@ def llc_reward(state, goal, old_action, action, reward):
     return r_
 
 class LLC():
-    def __init__(self, states, goals, actions):
+    def __init__(self, states=LLC_FEATURE_BOUNDS, goals=LLC_GOAL_BOUNDS, actions=LLC_ACTION_BOUNDS):
         '''
         Our LLC with sepcific sate features and actions list
         ----
@@ -126,7 +124,7 @@ class LLC():
         self.action_mid = self.action_bounds[0]+self.action_bound  # 动作空间范围的均值
         ## a_ddpg = ddpg_tanh * a_bound
         ## a = a_mid + a_ddpg
-        self.ddpg = DDPG(self.n_actions, self.n_states, self.action_bound)
+        self.ddpg = DDPG(self.n_actions, self.n_states+self.n_goals, self.action_bound)
 
         ## ddpg 模型初始话完成
         self.sess = self.ddpg.sess
@@ -154,7 +152,7 @@ class LLC():
         g_ = dfer.filter_state(goal, bounds=self.goals, objtype="array")
 
         # 输入合并 state 和 goal
-        ob =np.append(s_[:self.n_actions], s_[self.n_actions:] - g_)
+        ob =np.append(s_, s_[self.n_actions:] - g_)
 
         action = self.ddpg.choose_action(ob)
         # add randomness to action selection for exploration
@@ -187,8 +185,7 @@ class LLC():
         g_ = dfer.filter_state(goal, bounds=self.goals, objtype="array")
 
         # 输入合并 state 和 goal
-        ob = np.append(s_[:self.n_actions], s_[self.n_actions:] - g_)
-
+        ob = np.append(s_, s_[self.n_actions:] - g_)
         r = reward
         a = action
 
@@ -197,7 +194,7 @@ class LLC():
         n_g_ = dfer.filter_state(
             next_goal, bounds=self.goals, objtype="array")
 
-        n_ob =np.append(n_s_[:self.n_actions] ,n_s_[self.n_actions:] - n_g_)
+        n_ob =np.append(n_s_ ,n_s_[self.n_actions:] - n_g_)
 
         self.ddpg.store_transition(ob, a, r, n_ob)
         if self.ddpg.pointer > self.ddpg.MEMORY_CAPACITY:
