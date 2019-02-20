@@ -87,6 +87,9 @@ def llc_reward(state, goal, old_action, action, reward):
         goal_diff += np.math.tanh((state[key] - goal[key])**2)
     goal_diff = goal_diff  # /len(state)
 
+    ## 滚转角和俯仰角不能过大
+
+
     action_diff =np.math.tanh(((action - old_action)**2).sum())
 
     r_ = -0.8*action_diff - 0.4* goal_diff

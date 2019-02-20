@@ -18,7 +18,7 @@ import tensorflow as tf
 import numpy as np
 import gym
 import time
-
+import DRL.proportional as prop
 
 #####################  hyper parameters  ####################
 
@@ -41,8 +41,10 @@ class DDPG(object):
         self.BATCH_SIZE = 64
         self.LR_A = LR_A    # learning rate for actor
         self.LR_C = LR_C    # learning rate for critic
+        self.sample_alpha = 0.7
 
         self.memory = np.zeros((self.MEMORY_CAPACITY, s_dim * 2 + a_dim + 1), dtype=np.float32)
+        self.proi =  prop.Experience(self.MEMORY_CAPACITY,self.BATCH_SIZE,self.sample_alpha)
         self.pointer = 0
 
         
@@ -82,7 +84,8 @@ class DDPG(object):
         return self.sess.run(self.a, {self.S: s[np.newaxis, :]})[0]
 
     def learn(self):
-        indices = np.random.choice(self.MEMORY_CAPACITY, size=self.BATCH_SIZE)
+        _ , indices = self.proi.select()
+        # indices = np.random.choice(self.MEMORY_CAPACITY, size=self.BATCH_SIZE)
         bt = self.memory[indices, :]
         bs = bt[:, :self.s_dim]
         ba = bt[:, self.s_dim: self.s_dim + self.a_dim]
@@ -91,21 +94,24 @@ class DDPG(object):
 
         self.sess.run(self.atrain, {self.S: bs})
         td_error = self.sess.run(self.ctrain, {self.S: bs, self.a: ba, self.R: br, self.S_: bs_})
-        print(td_error)
+        
+        self.proi.priority_update(indices,list(td_error))
+        # print(td_error)
 
     def store_transition(self, s, a, r, s_):
         transition = np.hstack((s, a, [r], s_))
         index = self.pointer % self.MEMORY_CAPACITY  # replace the old memory with new memory
         self.memory[index, :] = transition
+        self.proi.add(index,1.0)
         self.pointer += 1
 
     def _build_a(self, s, reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
         with tf.variable_scope('Actor', reuse=reuse, custom_getter=custom_getter):
-            net0 = tf.layers.dense(s, 80, activation=tf.nn.tanh, name='l1', trainable=trainable)
+            net0 = tf.layers.dense(s, 80, activation=tf.nn.relu, name='l1', trainable=trainable)
 
             net1 = tf.layers.dense(
-                net0, 30, activation=tf.nn.tanh, name='l2', trainable=trainable)
+                net0, 30, activation=tf.nn.relu, name='l2', trainable=trainable)
 
             a = tf.layers.dense(net1, self.a_dim, activation=tf.nn.tanh, name='a', trainable=trainable)
             return tf.multiply(a, self.a_bound, name='scaled_a')
@@ -117,8 +123,8 @@ class DDPG(object):
             w1_s = tf.get_variable('w1_s', [self.s_dim, n_l1], trainable=trainable)
             w1_a = tf.get_variable('w1_a', [self.a_dim, n_l1], trainable=trainable)
             b1 = tf.get_variable('b1', [1, n_l1], trainable=trainable)
-            net0 = tf.nn.tanh(tf.matmul(s, w1_s) + tf.matmul(a, w1_a) + b1)
-            net1 = tf.layers.dense(net0,50,activation = tf.nn.tanh,name ="net2",trainable=trainable)
+            net0 = tf.nn.relu(tf.matmul(s, w1_s) + tf.matmul(a, w1_a) + b1)
+            net1 = tf.layers.dense(net0,50,activation = tf.nn.relu,name ="net2",trainable=trainable)
             return tf.layers.dense(net1, 1, trainable=trainable)  # Q(s,a)
 
     def _opt_c(self, td_error, c_params, q_target, q):
@@ -135,7 +141,7 @@ if __name__ == "__main__":
     a_dim = env.action_space.shape[0]
     a_bound = env.action_space.high
 
-    ddpg = DDPG(a_dim, s_dim, a_bound,10000,0.01,0.001)
+    ddpg = DDPG(a_dim, s_dim, a_bound,10000,0.001,0.002)
 
     var = 3  # control exploration
     t1 = time.time()
