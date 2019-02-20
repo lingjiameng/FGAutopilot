@@ -108,10 +108,10 @@ class DDPG(object):
     def _build_a(self, s, reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
         with tf.variable_scope('Actor', reuse=reuse, custom_getter=custom_getter):
-            net0 = tf.layers.dense(s, 80, activation=tf.nn.relu, name='l1', trainable=trainable)
+            net0 = tf.layers.dense(s, 150, activation=tf.nn.relu, name='l1', trainable=trainable)
 
             net1 = tf.layers.dense(
-                net0, 30, activation=tf.nn.relu, name='l2', trainable=trainable)
+                net0, 40, activation=tf.nn.relu, name='l2', trainable=trainable)
 
             a = tf.layers.dense(net1, self.a_dim, activation=tf.nn.tanh, name='a', trainable=trainable)
             return tf.multiply(a, self.a_bound, name='scaled_a')
@@ -119,7 +119,7 @@ class DDPG(object):
     def _build_c(self, s, a, reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
         with tf.variable_scope('Critic', reuse=reuse, custom_getter=custom_getter):
-            n_l1 = 100
+            n_l1 = 170
             w1_s = tf.get_variable('w1_s', [self.s_dim, n_l1], trainable=trainable)
             w1_a = tf.get_variable('w1_a', [self.a_dim, n_l1], trainable=trainable)
             b1 = tf.get_variable('b1', [1, n_l1], trainable=trainable)

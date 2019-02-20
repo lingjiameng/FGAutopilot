@@ -7,6 +7,7 @@ import numpy as np
 import os
 import tensorflow as tf
 import pandas as pd
+from scipy import stats
 
 LLC_FEATURE_BOUNDS = {
     'aileron': [-1, 1],  # 副翼 控制飞机翻滚 [-1,1] left/right
@@ -81,7 +82,7 @@ np.random.seed(2)
 tf.set_random_seed(2)  # reproducible
 
 
-def llc_reward(state, goal, old_action, action, reward):
+def _llc_reward(state, goal, old_action, action, reward):
     goal_diff = 0.0
     for key in goal.keys():
         goal_diff += np.math.tanh((state[key] - goal[key])**2)
@@ -95,8 +96,58 @@ def llc_reward(state, goal, old_action, action, reward):
     r_ = -0.8*action_diff - 0.4* goal_diff
     return r_
 
+
+def llc_reward(state, goal, old_action, action, reward):
+    #!!! 角度的距离计算需要考虑到360度的情况
+    #!!! 需要衡量飞机的飞行情况  是否达到目标; 飞行的安全性;
+
+    goal_diff = 0.0
+    # 飞机滚转角
+    key = 'roll-deg'
+    diff = state[key] - goal[key]
+    diff = max(abs(diff), abs(diff+360), abs(diff-360))
+    goal_diff += np.math.tanh(diff**2)
+
+    # 飞机朝向
+    key = 'heading-deg'
+    diff = state[key] - goal[key]
+    diff = max(abs(diff), abs(diff+360), abs(diff-360))
+    goal_diff += np.math.tanh(diff**2)
+
+    # 飞机俯仰角 无
+
+    ## 滚转角和俯仰角不能过大
+    state_penalty = 0.0
+    # 滚转角
+    state_penalty += (1 - stats.norm(0,
+                                     5).pdf(state['roll-deg']) / stats.norm(0, 5).pdf(0))
+    # 飞机俯仰角
+    state_penalty += (1 - stats.norm(0,
+                                     5).pdf(state['pitch-deg']) / stats.norm(0, 5).pdf(0))
+
+    # 倾向于不做动作 动作幅度不能太大
+    action_penalty = 0.0
+    # 方向舵
+    action_penalty += (1 - stats.norm(0,
+                                      0.3).pdf(action[1]) / stats.norm(0, 0.3).pdf(0))
+    # 副翼
+    action_penalty += (1 - stats.norm(0,
+                                      0.3).pdf(action[0]) / stats.norm(0, 0.3).pdf(0))
+
+    # 动作具有连续性
+    action_diff = np.math.tanh(((action - old_action)**2).sum())
+
+    r_ = 0.2*action_diff + goal_diff + state_penalty + action_penalty
+    # print("action_diff :  ", action_diff)
+    # print("goal_diff :  ", goal_diff)
+    # print("state_penalty :  ", state_penalty)
+    # print("action_penalty :  ", action_penalty)
+    # print("")
+    r_ = -1 * r_
+    return r_
+
 class LLC():
-    def __init__(self, states=LLC_FEATURE_BOUNDS, goals=LLC_GOAL_BOUNDS, actions=LLC_ACTION_BOUNDS):
+    def __init__(self, states=LLC_FEATURE_BOUNDS, goals=LLC_GOAL_BOUNDS, actions=LLC_ACTION_BOUNDS,data_bounds=DATA_BOUNDS,n_old_actions = 0):
         '''
         Our LLC with sepcific sate features and actions list
         ----
@@ -117,6 +168,7 @@ class LLC():
 
         self.states = states
         self.goals = goals
+        self.databounds = data_bounds
 
         self.action_bounds = dfer.bounds_dict2arr(actions)
 
@@ -127,7 +179,7 @@ class LLC():
         self.action_mid = self.action_bounds[0]+self.action_bound  # 动作空间范围的均值
         ## a_ddpg = ddpg_tanh * a_bound
         ## a = a_mid + a_ddpg
-        self.ddpg = DDPG(self.n_actions, self.n_states+self.n_goals, self.action_bound)
+        self.ddpg = DDPG(self.n_actions, self.n_states+self.n_goals+self.n_actions*n_old_actions, self.action_bound)
 
         ## ddpg 模型初始话完成
         self.sess = self.ddpg.sess
@@ -139,11 +191,12 @@ class LLC():
     def save(self, path):
         self.saver.save(self.sess, path)
 
-    def choose_action(self, state, goal):
+    def choose_action(self, state, goal, old_actions = [] ):
         '''
         input: 
             state(dict):原始数据即可
             goal(dict):原始数据即可
+            old_actions(list):3个历史动作的列表
         output:
             action(np.array):
                 DRL输出的action再加入一定随机性后的结果,可用于feed_back
@@ -155,7 +208,8 @@ class LLC():
         g_ = dfer.filter_state(goal, bounds=self.goals, objtype="array")
 
         # 输入合并 state 和 goal
-        ob =np.append(s_, s_[self.n_actions:] - g_)
+        ob =np.append(s_, g_)
+        ob = np.append(ob, old_actions)
 
         action = self.ddpg.choose_action(ob)
         # add randomness to action selection for exploration
@@ -167,7 +221,7 @@ class LLC():
         action = action_true - self.action_mid
         return action, action_true
 
-    def learn(self, state, goal, reward, action, next_state, next_goal):
+    def learn(self, state, goal, reward, action, next_state, next_goal,old_actions=[],next_old_actions=[]):
         '''
         Input:
             -state(dict)
@@ -188,7 +242,8 @@ class LLC():
         g_ = dfer.filter_state(goal, bounds=self.goals, objtype="array")
 
         # 输入合并 state 和 goal
-        ob = np.append(s_, s_[self.n_actions:] - g_)
+        ob = np.append(s_, g_)
+        ob = np.append(ob, old_actions)
         r = reward
         a = action
 
@@ -197,7 +252,8 @@ class LLC():
         n_g_ = dfer.filter_state(
             next_goal, bounds=self.goals, objtype="array")
 
-        n_ob =np.append(n_s_ ,n_s_[self.n_actions:] - n_g_)
+        n_ob =np.append(n_s_ ,n_g_)
+        n_ob = np.append(n_ob, next_old_actions)
 
         self.ddpg.store_transition(ob, a, r, n_ob)
         if self.ddpg.pointer > self.ddpg.MEMORY_CAPACITY:
