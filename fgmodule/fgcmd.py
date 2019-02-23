@@ -197,7 +197,7 @@ class FG_CMD:
         self.print_local_time()
         return None
     
-    def replay(self, pos = "ground", path = None, time=-1):
+    def replay(self, pos = "ground", path = None, time=-1, speed_up = 0):
         '''
         input:
             pos(str)
@@ -205,6 +205,8 @@ class FG_CMD:
                 -"sky" 复位至天空
             path(str)
                 -tape的路径 如 E:\tape
+            times: 发送 speed up 指令的次数
+               reference: speedup 3次 -> 8倍速
         reposition the plane in intial state
         using fg replay command. it's efficiency
         '''
@@ -224,6 +226,8 @@ class FG_CMD:
         self.__setitem__("/controls/gear/brake-parking", 0)
         print("replay to",pos, "完成!", end='time:')
         self.print_local_time()
+        if speed_up:
+            self.speed_up(speed_up)
         return None
 
     # auto start
@@ -233,3 +237,17 @@ class FG_CMD:
         print("auto start完成", end=' ')
         self.print_local_time()
         return None
+
+    def speed_up(self, times):
+        """
+        参数:
+        times: 发送 speed up 指令的次数
+               reference: speedup 3次 -> 8倍速
+        返回值:
+        re: 无意义 调试使用
+        """
+        nasal_cmd = "controls.speedup(1);\n" * times
+        self.telnet._putcmd("nasal")
+        self.telnet._putcmd(nasal_cmd)
+        re = self.telnet._putcmd("##EOF##")
+        return re
