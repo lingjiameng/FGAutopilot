@@ -84,7 +84,7 @@ old_action = np.array([0., 0.])
 rewards = []
 old_actions = [(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)]
 next_old_actions = [(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)]
-
+#%%
 for e in range(epoch):
         state = myfgenv.replay("sky")
         time.sleep(2)
@@ -113,7 +113,7 @@ for e in range(epoch):
 
             action_frame = dfer.action2frame((action_true[0],elevator,action_true[1],0.6,0.6))
             
-            next_state, reward , done , info = myfgenv.step(action_frame,delay=1) 
+            next_state, reward , done , info = myfgenv.step(action_frame,delay=0.8) 
             
             r_ = LLCsimple.llc_reward(state , goal,old_action,action ,reward)
             
@@ -211,12 +211,16 @@ def pid():
 #%%
 myllc.save("modelckpt/LLCsimple_DDPG2_delay/LLCsimple_DDPG.ckpt")
 
+#%%
+print(myllc.ddpg.pointer)
+np.save("ddpgbuffer.npy",myllc.ddpg.memory)
 
 #%%
 print(rewards)
 
+
 #%%
 import matplotlib.pyplot as plt
 plt.plot(rewards)
-plt.savefig("rewards.png")
+# plt.savefig("rewards.png")
 plt.show()
